@@ -9,20 +9,21 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
-    // امسح الـ compileOptions القديمة وخلي دي بس
     compileOptions {
-        coreLibraryDesugaringEnabled = true // تفعيل الخاصية
+        // في Kotlin DSL نستخدم isCoreLibraryDesugaringEnabled
+        isCoreLibraryDesugaringEnabled = true 
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
 
     kotlinOptions {
+        // الطريقة الصحيحة لتعريف jvmTarget في ملفات kts
         jvmTarget = "1.8"
     }
 
     defaultConfig {
         applicationId = "com.example.alrafeeg_chat"
-        minSdk = 21 // يفضل تحديدها بـ 21 على الأقل لدعم الـ Desugaring بشكل مستقر
+        minSdk = 21 
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -35,11 +36,7 @@ android {
     }
 }
 
-flutter {
-    source = "../.."
-}
-
-// أضف هذا الجزء في نهاية الملف (مهم جداً)
 dependencies {
+    // تأكد من استخدام الأقواس في ملفات kts
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
