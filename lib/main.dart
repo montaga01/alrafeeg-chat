@@ -15,7 +15,7 @@ class AlrafeegApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'الرافع',
+      title: 'الرفيق',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
       home: const _Splash(),
