@@ -29,3 +29,6 @@
 # Gradle Wrapper
 !gradle/
 !gradle/**
+
+# Codemagic
+!codemagic.yaml
