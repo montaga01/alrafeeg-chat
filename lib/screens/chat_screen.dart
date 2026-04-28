@@ -10,20 +10,18 @@ import '../widgets/message_bubble.dart';
 
 class ChatScreen extends StatefulWidget {
   final ChatUser otherUser;
-
   const ChatScreen({super.key, required this.otherUser});
-
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final _msgCtrl      = TextEditingController();
-  final _scrollCtrl   = ScrollController();
-  final _wsService    = WebSocketService();
+  final _msgCtrl   = TextEditingController();
+  final _scrollCtrl = ScrollController();
+  final _ws         = WebSocketService(); // singleton
 
   List<Message> _messages = [];
-  int _myId = 0;
+  int  _myId   = 0;
   bool _loading = true;
   StreamSubscription? _wsSub;
 
@@ -35,72 +33,72 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _init() async {
     _myId = await AppStorage.getUserId() ?? 0;
-    final token = await AppStorage.getToken() ?? '';
 
-    // تحميل الرسائل القديمة
+    // ── تحميل الرسائل من السيرفر (مرة واحدة فقط) ────────────
     try {
       final msgs = await ApiService.getMessages(widget.otherUser.id);
+      if (!mounted) return;
       setState(() { _messages = msgs; _loading = false; });
-      _scrollToBottom();
+      _scrollToBottom(jump: true);
     } catch (_) {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
 
-    // الاتصال بـ WebSocket
-    _wsService.connect(token);
-    _wsSub = _wsService.messages.listen((msg) {
-      // نقبل فقط الرسائل المتعلقة بهذه المحادثة
-      if (msg.senderId == widget.otherUser.id || msg.receiverId == widget.otherUser.id) {
-        setState(() => _messages.add(msg));
-        _scrollToBottom();
-      }
+    // ── استماع للرسائل الجديدة push (بدون إعادة تحميل كامل) ──
+    _wsSub = _ws.messages.listen((msg) {
+      final otherUid = widget.otherUser.id;
+      final relevant = (msg.senderId == otherUid && msg.receiverId == _myId)
+                    || (msg.senderId == _myId    && msg.receiverId == otherUid);
+      if (!relevant) return;
+
+      // لا نضيف مكرراً (optimistic + confirmed)
+      if (_messages.any((m) => m.id == msg.id && msg.id != 0)) return;
+
+      setState(() => _messages.add(msg));
+      _scrollToBottom();
     });
   }
 
-  void _send() async {
+  void _send() {
     final text = _msgCtrl.text.trim();
     if (text.isEmpty) return;
     _msgCtrl.clear();
 
-    // إضافة الرسالة محلياً فوراً (optimistic update)
+    // Optimistic update فوري
+    final tempId  = -DateTime.now().millisecondsSinceEpoch;
     final tempMsg = Message(
-      id: DateTime.now().millisecondsSinceEpoch,
-      senderId: _myId,
+      id:         tempId,
+      senderId:   _myId,
       receiverId: widget.otherUser.id,
-      content: text,
-      timestamp: DateTime.now(),
+      content:    text,
+      timestamp:  DateTime.now(),
     );
     setState(() => _messages.add(tempMsg));
     _scrollToBottom();
 
+    // إرسال عبر WebSocket أو HTTP
     try {
-      // إرسال عبر WebSocket
-      _wsService.sendMessage(
-        receiverId: widget.otherUser.id,
-        content: text,
-      );
+      _ws.sendMessage(receiverId: widget.otherUser.id, content: text);
     } catch (_) {
-      // fallback: إرسال عبر HTTP
-      try {
-        await ApiService.sendMessage(
-          receiverId: widget.otherUser.id,
-          content: text,
-        );
-      } catch (e) {
+      ApiService.sendMessage(receiverId: widget.otherUser.id, content: text)
+          .catchError((_) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('فشل الإرسال: $e')));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(const SnackBar(content: Text('فشل الإرسال')));
         }
-      }
+      });
     }
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool jump = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollCtrl.hasClients) {
+      if (!_scrollCtrl.hasClients) return;
+      if (jump) {
+        _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
+      } else {
         _scrollCtrl.animateTo(
           _scrollCtrl.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 280),
           curve: Curves.easeOut,
         );
       }
@@ -110,16 +108,43 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void dispose() {
     _wsSub?.cancel();
-    _wsService.dispose();
     _msgCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
   }
 
+  // ══════════════════════════════════════════════════════════════
+  //  بناء القائمة مع فواصل التاريخ
+  // ══════════════════════════════════════════════════════════════
+  List<Widget> _buildMessageList() {
+    final items = <Widget>[];
+    DateTime? lastDay;
+
+    for (final msg in _messages) {
+      final day = DateTime(
+          msg.timestamp.year, msg.timestamp.month, msg.timestamp.day);
+
+      // فاصل يوم جديد
+      if (lastDay == null || day != lastDay) {
+        items.add(DateDivider(date: msg.timestamp));
+        lastDay = day;
+      }
+
+      items.add(MessageBubble(
+        message: msg,
+        isMe:    msg.senderId == _myId,
+      ));
+    }
+    return items;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF0F4FF),
       appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new),
           onPressed: () => Navigator.pop(context),
@@ -127,52 +152,56 @@ class _ChatScreenState extends State<ChatScreen> {
         title: Row(
           children: [
             CircleAvatar(
-              radius: 18,
+              radius: 19,
               backgroundColor: AppTheme.primaryColor.withOpacity(0.15),
-              child: Text(
-                widget.otherUser.name[0].toUpperCase(),
-                style: const TextStyle(
-                    color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
-              ),
+              child: Text(widget.otherUser.name[0].toUpperCase(),
+                  style: const TextStyle(color: AppTheme.primaryColor,
+                      fontWeight: FontWeight.bold)),
             ),
             const SizedBox(width: 10),
-            Text(widget.otherUser.name),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.otherUser.name,
+                    style: const TextStyle(fontSize: 16,
+                        fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+                const Text('متصل',
+                    style: TextStyle(fontSize: 11, color: Colors.green)),
+              ],
+            ),
           ],
         ),
       ),
+
       body: Column(
         children: [
-          // قائمة الرسائل
+          // ── الرسائل ──────────────────────────────────────────
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _messages.isEmpty
                     ? const Center(
                         child: Text('ابدأ المحادثة! 👋',
-                            style: TextStyle(color: Colors.grey)))
-                    : ListView.builder(
+                            style: TextStyle(color: Colors.grey, fontSize: 16)))
+                    : ListView(
                         controller: _scrollCtrl,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        itemCount: _messages.length,
-                        itemBuilder: (_, i) => MessageBubble(
-                          message: _messages[i],
-                          isMe: _messages[i].senderId == _myId,
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        children: _buildMessageList(),
                       ),
           ),
 
-          // حقل الإرسال
+          // ── حقل الإرسال ──────────────────────────────────────
           Container(
             color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
             child: SafeArea(
               child: Row(
                 children: [
                   Expanded(
                     child: TextField(
-                      controller: _msgCtrl,
+                      controller:      _msgCtrl,
                       textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _send(),
+                      onSubmitted:     (_) => _send(),
                       decoration: InputDecoration(
                         hintText: 'اكتب رسالة...',
                         contentPadding: const EdgeInsets.symmetric(
@@ -196,14 +225,15 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  InkWell(
+                  GestureDetector(
                     onTap: _send,
-                    borderRadius: BorderRadius.circular(50),
                     child: Container(
-                      width: 48,
-                      height: 48,
+                      width: 48, height: 48,
                       decoration: const BoxDecoration(
-                        color: AppTheme.primaryColor,
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF2979FF), Color(0xFF0D47A1)],
+                          begin: Alignment.topLeft, end: Alignment.bottomRight,
+                        ),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.send_rounded,
