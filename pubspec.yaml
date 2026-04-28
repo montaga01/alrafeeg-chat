@@ -1,5 +1,5 @@
-name: alrafeeg_chat
-description: تطبيق الرافع للمحادثات
+name: alrafeeq
+description: تطبيق الرفيق للدردشة - تطبيق محادثات فوري يعمل على أندرويد والويب
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -9,18 +9,44 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # واجهة المستخدم
+  cupertino_icons: ^1.0.6
+  google_fonts: ^6.1.0
+  cached_network_image: ^3.3.0
+  flutter_spinkit: ^5.2.0
+  shimmer: ^3.0.0
+
+  # الشبكة والاتصال
   http: ^1.2.0
   web_socket_channel: ^2.4.0
+  connectivity_plus: ^5.0.2
+
+  # التخزين المحلي
   shared_preferences: ^2.2.2
+  localstorage: ^4.0.1+4
+
+  # الإشعارات
+  flutter_local_notifications: ^16.3.0
+
+  # إدارة الحالة
+  provider: ^6.1.1
+
+  # أدوات مساعدة
   intl: ^0.19.0
-  firebase_core: ^2.24.0
-  firebase_messaging: ^14.7.9
-  flutter_local_notifications: ^17.2.4
+  url_launcher: ^6.2.2
+  image_picker: ^1.0.7
+  file_picker: ^6.1.1
+  path_provider: ^2.1.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^3.0.1
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/

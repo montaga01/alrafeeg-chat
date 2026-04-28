@@ -1,0 +1,31 @@
+# Ignore everything
+*
+# But not these files
+!.gitignore
+!pubspec.yaml
+!README.md
+!analysis_options.yaml
+!.metadata
+
+# Flutter/Dart
+!lib/
+!lib/**/*.dart
+!test/
+!test/**/*.dart
+
+# Android
+!android/
+!android/**
+!.idea/
+
+# Web
+!web/
+!web/**
+
+# Assets
+!assets/
+!assets/**
+
+# Gradle Wrapper
+!gradle/
+!gradle/**

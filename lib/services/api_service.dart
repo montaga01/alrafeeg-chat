@@ -1,106 +1,118 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../core/constants.dart';
-import '../core/storage.dart';
-import '../models/user.dart';
-import '../models/message.dart';
 
 class ApiService {
-  // ========== Auth Headers ==========
-  static Future<Map<String, String>> _headers() async {
-    final token = await AppStorage.getToken();
-    return {
-      'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
+  static const String baseUrl = 'https://chat.alrafeeg.com';
+
+  static Map<String, String> _headers(String? token) {
+    final headers = {'Content-Type': 'application/json'};
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
   }
 
-  // ========== تسجيل ==========
+  // تسجيل الدخول
+  static Future<Map<String, dynamic>> login({
+    required String email,
+    required String password,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/login'),
+      headers: _headers(null),
+      body: jsonEncode({'email': email, 'password': password}),
+    );
+    return _processResponse(response);
+  }
+
+  // إنشاء حساب جديد
   static Future<Map<String, dynamic>> register({
     required String name,
     required String email,
     required String password,
   }) async {
-    final res = await http.post(
-      Uri.parse('${AppConstants.baseUrl}/api/register'),
-      headers: {'Content-Type': 'application/json'},
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/register'),
+      headers: _headers(null),
       body: jsonEncode({'name': name, 'email': email, 'password': password}),
     );
-    final data = jsonDecode(res.body);
-    if (res.statusCode != 200) throw data['detail'] ?? 'خطأ في التسجيل';
-    return data;
+    return _processResponse(response);
   }
 
-  // ========== تسجيل دخول ==========
-  static Future<Map<String, dynamic>> login({
-    required String email,
-    required String password,
+  // تحميل قائمة المحادثات
+  static Future<List<Map<String, dynamic>>> getChats(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/chats'),
+      headers: _headers(token),
+    );
+    final data = _processResponse(response);
+    if (data['success'] == true && data['data'] != null) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+    return [];
+  }
+
+  // تحميل رسائل محادثة
+  static Future<List<Map<String, dynamic>>> getMessages({
+    required String token,
+    required int userId,
   }) async {
-    final res = await http.post(
-      Uri.parse('${AppConstants.baseUrl}/api/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/messages/$userId'),
+      headers: _headers(token),
     );
-    final data = jsonDecode(res.body);
-    if (res.statusCode != 200) throw data['detail'] ?? 'خطأ في تسجيل الدخول';
-    return data['data'];
+    final data = _processResponse(response);
+    if (data['success'] == true && data['data'] != null) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+    return [];
   }
 
-  // ========== البحث عن مستخدمين ==========
-  static Future<List<ChatUser>> searchUsers(String query) async {
-    final res = await http.post(
-      Uri.parse('${AppConstants.baseUrl}/api/users/search'),
-      headers: await _headers(),
-      body: jsonEncode({'query': query}),
-    );
-    final data = jsonDecode(res.body);
-    if (res.statusCode != 200) throw data['detail'] ?? 'خطأ في البحث';
-    return (data['data'] as List).map((u) => ChatUser.fromJson(u)).toList();
-  }
-
-  // ========== قائمة المحادثات ==========
-  static Future<List<Map<String, dynamic>>> getChats() async {
-    final res = await http.get(
-      Uri.parse('${AppConstants.baseUrl}/api/chats'),
-      headers: await _headers(),
-    );
-    final data = jsonDecode(res.body);
-    if (res.statusCode != 200) throw data['detail'] ?? 'خطأ';
-    return List<Map<String, dynamic>>.from(data['data']);
-  }
-
-  // ========== رسائل محادثة ==========
-  static Future<List<Message>> getMessages(int withUserId) async {
-    final res = await http.get(
-      Uri.parse('${AppConstants.baseUrl}/api/messages/$withUserId'),
-      headers: await _headers(),
-    );
-    final data = jsonDecode(res.body);
-    if (res.statusCode != 200) throw data['detail'] ?? 'خطأ';
-    return (data['data'] as List).map((m) => Message.fromJson(m)).toList();
-  }
-
-  // ========== إرسال رسالة (HTTP fallback) ==========
-  static Future<Message> sendMessage({
+  // إرسال رسالة (HTTP fallback)
+  static Future<bool> sendMessage({
+    required String token,
     required int receiverId,
     required String content,
   }) async {
-    final res = await http.post(
-      Uri.parse('${AppConstants.baseUrl}/api/messages/send'),
-      headers: await _headers(),
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/messages/send'),
+      headers: _headers(token),
       body: jsonEncode({'receiver_id': receiverId, 'content': content}),
     );
-    final data = jsonDecode(res.body);
-    if (res.statusCode != 200) throw data['detail'] ?? 'خطأ في الإرسال';
-    return Message.fromJson(data['data']);
+    return response.statusCode == 200;
   }
 
-  // ========== تحديث FCM Token ==========
-  static Future<void> updateFcmToken(String fcmToken) async {
-    await http.post(
-      Uri.parse('${AppConstants.baseUrl}/api/update-fcm-token'),
-      headers: await _headers(),
-      body: jsonEncode({'fcm_token': fcmToken}),
+  // البحث عن مستخدمين
+  static Future<List<Map<String, dynamic>>> searchUsers({
+    required String token,
+    required String query,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/users/search'),
+      headers: _headers(token),
+      body: jsonEncode({'query': query}),
     );
+    final data = _processResponse(response);
+    if (data['success'] == true && data['data'] != null) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+    return [];
+  }
+
+  // معالجة الاستجابة
+  static Map<String, dynamic> _processResponse(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {'success': true, 'data': body['data'], 'raw': body};
+      } else {
+        return {
+          'success': false,
+          'error': body['detail'] ?? 'حدث خطأ غير متوقع',
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'تعذر الاتصال بالخادم'};
+    }
   }
 }

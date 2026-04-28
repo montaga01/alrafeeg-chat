@@ -1,31 +1,36 @@
 class Message {
-  final int      id;
-  final int      senderId;
-  final int      receiverId;
-  final String   content;
+  final int id;
+  final int senderId;
+  final int receiverId;
+  final String content;
   final DateTime timestamp;
+  bool isTemp;
 
-  const Message({
+  Message({
     required this.id,
     required this.senderId,
     required this.receiverId,
     required this.content,
     required this.timestamp,
+    this.isTemp = false,
   });
 
-  factory Message.fromJson(Map<String, dynamic> j) => Message(
-    id:         j['id']         ?? 0,
-    senderId:   j['sender_id']  ?? 0,
-    receiverId: j['receiver_id'] ?? 0,
-    content:    j['content']    ?? '',
-    timestamp:  DateTime.tryParse(j['timestamp'] ?? '')?.toLocal() ?? DateTime.now(),
-  );
+  factory Message.fromJson(Map<String, dynamic> json) {
+    return Message(
+      id: json['id'] ?? 0,
+      senderId: json['sender_id'] ?? 0,
+      receiverId: json['receiver_id'] ?? 0,
+      content: json['content'] ?? '',
+      timestamp: json['timestamp'] != null
+          ? DateTime.parse(json['timestamp'])
+          : DateTime.now(),
+    );
+  }
 
-  Map<String, dynamic> toJson() => {
-    'id':          id,
-    'sender_id':   senderId,
-    'receiver_id': receiverId,
-    'content':     content,
-    'timestamp':   timestamp.toIso8601String(),
-  };
+  Map<String, dynamic> toJson() {
+    return {
+      'receiver_id': receiverId,
+      'content': content,
+    };
+  }
 }

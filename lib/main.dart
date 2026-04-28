@@ -1,106 +1,134 @@
 import 'package:flutter/material.dart';
-import 'core/storage.dart';
-import 'core/theme.dart';
-import 'screens/home_screen.dart';
-import 'screens/login_screen.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'providers/chat_provider.dart';
+import 'providers/auth_provider.dart';
+import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const AlrafeegApp());
+
+  // إعدادات النظام
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Color(0xFF1a56db),
+      statusBarIconBrightness: Brightness.light,
+    ),
+  );
+
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+      ],
+      child: const AlRafeeqApp(),
+    ),
+  );
 }
 
-class AlrafeegApp extends StatelessWidget {
-  const AlrafeegApp({super.key});
+class AlRafeeqApp extends StatelessWidget {
+  const AlRafeeqApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'الرفيق',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.theme,
-      home: const _Splash(),
-    );
-  }
-}
-
-class _Splash extends StatefulWidget {
-  const _Splash();
-  @override
-  State<_Splash> createState() => _SplashState();
-}
-
-class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double>   _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
-    _scale = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
-    _ctrl.forward();
-    _check();
-  }
-
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-
-  Future<void> _check() async {
-    await Future.delayed(const Duration(milliseconds: 1200));
-    final token = await AppStorage.getToken();
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, a, __) =>
-            token != null ? const HomeScreen() : const LoginScreen(),
-        transitionsBuilder: (_, a, __, child) =>
-            FadeTransition(opacity: a, child: child),
-        transitionDuration: const Duration(milliseconds: 500),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFEEF4FF), Color(0xFFE8F0FE)],
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
+      theme: ThemeData(
+        primaryColor: const Color(0xFF1a56db),
+        scaffoldBackgroundColor: const Color(0xFFf0f4ff),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1a56db),
+          primary: const Color(0xFF1a56db),
+          secondary: const Color(0xFF1e429f),
+          surface: const Color(0xFFffffff),
+        ),
+        textTheme: GoogleFonts.tajawalTextTheme(
+          const TextTheme(
+            displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w800),
+            displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+            displaySmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+            headlineMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            headlineSmall: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            titleLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            titleMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
+            bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
+            bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
           ),
         ),
-        child: Center(
-          child: ScaleTransition(
-            scale: _scale,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 100, height: 100,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF1A73E8), Color(0xFF0D47A1)],
-                      begin: Alignment.topLeft, end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
-                      BoxShadow(color: const Color(0xFF1A73E8).withOpacity(0.4),
-                          blurRadius: 24, offset: const Offset(0, 10)),
-                    ],
-                  ),
-                  child: const Icon(Icons.chat_rounded, color: Colors.white, size: 52),
-                ),
-                const SizedBox(height: 20),
-                const Text('الرفيق',
-                    style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A237E), letterSpacing: 1.5)),
-              ],
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFFffffff),
+          foregroundColor: Color(0xFF1a2340),
+          elevation: 0,
+          centerTitle: false,
+        ),
+        cardTheme: CardTheme(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFFf8faff),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFFe2e8f8)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFFe2e8f8)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFF1a56db), width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1a56db),
+            foregroundColor: Colors.white,
+            minimumSize: const Size(double.infinity, 52),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            textStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Tajawal',
             ),
           ),
         ),
       ),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('ar', 'SA'),
+        Locale('en', 'US'),
+      ],
+      locale: const Locale('ar', 'SA'),
+      builder: (context, child) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: child ?? const SizedBox(),
+        );
+      },
+      home: const SplashScreen(),
     );
   }
 }

@@ -1,16 +1,70 @@
-# alrafeeg_chat
+# AlRafeeq Flutter Project
 
-A new Flutter project.
+## تطبيق الرفيق للدردشة
 
-## Getting Started
+تطبيق محادثات فوري يعمل على أندرويد والويب.
 
-This project is a starting point for a Flutter application.
+### المتطلبات
+- Flutter SDK >= 3.0.0
+- Dart SDK >= 3.0.0
+- Android SDK (API 21+)
 
-A few resources to get you started if this is your first Flutter project:
+### التشغيل
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+# تثبيت الحزم
+flutter pub get
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+# تشغيل على أندرويد
+flutter run
+
+# بناء ملف APK
+flutter build apk --release
+
+# تشغيل على الويب
+flutter run -d chrome
+
+# بناء للويب
+flutter build web
+```
+
+### هيكل المشروع
+
+```
+lib/
+├── main.dart              # نقطة الدخول
+├── models/                # النماذج
+│   ├── user.dart
+│   ├── message.dart
+│   ├── chat.dart
+│   └── api_response.dart
+├── services/              # الخدمات
+│   ├── api_service.dart
+│   ├── auth_service.dart
+│   └── websocket_service.dart
+├── providers/             # إدارة الحالة
+│   ├── auth_provider.dart
+│   └── chat_provider.dart
+├── screens/               # الشاشات
+│   ├── splash_screen.dart
+│   ├── auth_screen.dart
+│   ├── home_screen.dart
+│   ├── chat_list_screen.dart
+│   └── chat_room_screen.dart
+└── utils/                 # أدوات مساعدة
+    └── date_formatter.dart
+```
+
+### API
+- Base URL: `https://chat.alrafeeg.com`
+- WebSocket: `wss://chat.alrafeeg.com/ws/chat`
+
+### المميزات
+- تسجيل دخول وإنشاء حساب
+- محادثات فورية عبر WebSocket
+- قائمة المحادثات مع آخر رسالة
+- بحث عن مستخدمين
+- إشعارات
+- تصميم RTL عربي كامل
+- ذاكرة محلية للإيميلات
+- دعم أندرويد والويب
