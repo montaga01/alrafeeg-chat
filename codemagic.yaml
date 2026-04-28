@@ -5,6 +5,11 @@ workflows:
     environment:
       flutter: stable
     scripts:
+      - name: Check files
+        script: |
+          ls -la lib/
+          ls -la lib/providers/
+          ls -la lib/screens/
       - name: Get Flutter packages
         script: flutter pub get
       - name: Build Web

@@ -1,10 +1,10 @@
 import 'message.dart';
 
 class Chat {
-  final int userId;
-  final String name;
-  final String? lastMessage;
-  final DateTime? timestamp;
+  int userId;
+  String name;
+  String? lastMessage;
+  DateTime? timestamp;
   int unreadCount;
 
   Chat({

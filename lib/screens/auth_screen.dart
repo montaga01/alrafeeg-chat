@@ -241,7 +241,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                           _buildTextField(
                             controller: _regNameController,
                             label: 'الاسم الكامل',
-                            icon: Icons.person_outline,
                             prefix: '👤',
                             validator: (v) => (v == null || v.isEmpty) ? 'يرجى إدخال الاسم' : null,
                           ),
@@ -249,7 +248,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                           _buildTextField(
                             controller: _regEmailController,
                             label: 'البريد الإلكتروني',
-                            icon: Icons.email_outlined,
                             prefix: '✉️',
                             keyboardType: TextInputType.emailAddress,
                             validator: (v) {

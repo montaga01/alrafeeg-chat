@@ -56,7 +56,7 @@ class AuthService {
 
       return (success: true, error: null, user: user);
     } else {
-      return (success: false, error: result['error'], user: null);
+      return (success: false, error: result['error']?.toString(), user: null);
     }
   }
 
@@ -75,7 +75,7 @@ class AuthService {
     if (result['success'] == true) {
       return (success: true, error: null);
     } else {
-      return (success: false, error: result['error']);
+      return (success: false, error: result['error']?.toString());
     }
   }
 

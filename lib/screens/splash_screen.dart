@@ -41,7 +41,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _navigate() async {
     final authProvider = context.read<AuthProvider>();
-    await authProvider.loadSavedData();
+    // loadSavedData بيتنفذ تلقائياً في AuthProvider()
 
     if (!mounted) return;
 
