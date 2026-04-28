@@ -71,7 +71,7 @@ class AlRafeeqApp extends StatelessWidget {
           elevation: 0,
           centerTitle: false,
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),

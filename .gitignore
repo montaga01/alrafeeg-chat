@@ -6,17 +6,15 @@
 !README.md
 !analysis_options.yaml
 !.metadata
+!codemagic.yaml
 
-# Flutter/Dart
+# Flutter/Dart - un-ignore lib directory and ALL subdirectories
 !lib/
-!lib/**/*.dart
-!test/
-!test/**/*.dart
+!lib/**/
 
 # Android
 !android/
 !android/**
-!.idea/
 
 # Web
 !web/
@@ -30,5 +28,6 @@
 !gradle/
 !gradle/**
 
-# Codemagic
-!codemagic.yaml
+# Test
+!test/
+!test/**
