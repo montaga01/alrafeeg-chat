@@ -1,5 +1,5 @@
   android-web-workflow:
-workflows:
+  workflows:
     name: Build APK and Web
     max_build_duration: 60
     environment:
