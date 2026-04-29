@@ -1,41 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'providers/chat_provider.dart';
-import 'providers/auth_provider.dart';
-import 'screens/splash_screen.dart';
+import 'core/storage.dart';
+import 'screens/login_screen.dart';
+import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // إعدادات النظام
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Color(0xFF1a56db),
-      statusBarIconBrightness: Brightness.light,
-    ),
-  );
-
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
-
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
-      ],
-      child: const AlRafeeqApp(),
-    ),
-  );
+  runApp(const AlrafeegApp());
 }
 
-class AlRafeeqApp extends StatelessWidget {
-  const AlRafeeqApp({super.key});
+class AlrafeegApp extends StatelessWidget {
+  const AlrafeegApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -71,64 +46,63 @@ class AlRafeeqApp extends StatelessWidget {
           elevation: 0,
           centerTitle: false,
         ),
-        cardTheme: CardThemeData(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: const Color(0xFFf8faff),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFe2e8f8)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFe2e8f8)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFF1a56db), width: 1.5),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF1a56db),
-            foregroundColor: Colors.white,
-            minimumSize: const Size(double.infinity, 52),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            textStyle: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              fontFamily: 'Tajawal',
-            ),
-          ),
-        ),
       ),
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [
-        Locale('ar', 'SA'),
-        Locale('en', 'US'),
-      ],
-      locale: const Locale('ar', 'SA'),
       builder: (context, child) {
         return Directionality(
           textDirection: TextDirection.rtl,
           child: child ?? const SizedBox(),
         );
       },
-      home: const SplashScreen(),
+      home: const _Splash(),
+    );
+  }
+}
+
+/// شاشة البداية: تتحقق من التوكن وتوجّه للشاشة الصحيحة
+class _Splash extends StatefulWidget {
+  const _Splash();
+
+  @override
+  State<_Splash> createState() => _SplashState();
+}
+
+class _SplashState extends State<_Splash> {
+  @override
+  void initState() {
+    super.initState();
+    _check();
+  }
+
+  Future<void> _check() async {
+    final token = await AppStorage.getToken();
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => token != null ? const HomeScreen() : const LoginScreen(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [
+              Color(0xFF1a56db),
+              Color(0xFF1e429f),
+              Color(0xFF0f2a6e),
+            ],
+          ),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      ),
     );
   }
 }

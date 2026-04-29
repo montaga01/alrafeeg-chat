@@ -1,35 +1,13 @@
-class User {
+class ChatUser {
   final int id;
   final String name;
   final String email;
-  final DateTime? createdAt;
 
-  User({
-    required this.id,
-    required this.name,
-    required this.email,
-    this.createdAt,
-  });
+  ChatUser({required this.id, required this.name, required this.email});
 
-  factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      email: json['email'] ?? '',
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'])
-          : null,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'email': email,
-      'created_at': createdAt?.toIso8601String(),
-    };
-  }
-
-  String get initial => name.isNotEmpty ? name[0].toUpperCase() : '?';
+  factory ChatUser.fromJson(Map<String, dynamic> j) => ChatUser(
+    id: j['id'],
+    name: j['name'],
+    email: j['email'] ?? '',
+  );
 }
