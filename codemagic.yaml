@@ -20,14 +20,12 @@ workflows:
           # 1. ضغط ملفات الويب
           cd build/web && zip -r ../../web-web.zip . && cd ../..
           
-          # 2. كتابة مفتاح الـ SSH بطريقة تمنع تلف التنسيق
-          cat << 'EOF' > /tmp/id_rsa
-          $SSH_PRIVATE_KEY
-          EOF
-          
+          # 2. فك تشفير مفتاح الـ SSH وحفظه بتنسيق سليم
+          # تم استخدام base64 --decode لأن المتغير مخزن بصيغة مشفرة
+          echo "$SSH_PRIVATE_KEY" | base64 --decode > /tmp/id_rsa
           chmod 600 /tmp/id_rsa
 
-          # 3. الرفع للسيرفر (SCP)
+          # 3. الرفع للسيرفر (SCP) باستخدام المفتاح المفكوك
           scp -i /tmp/id_rsa -o StrictHostKeyChecking=no web-web.zip root@173.214.173.203:/root/
           
           # 4. فك الضغط والنقل داخل السيرفر (SSH)
@@ -41,8 +39,12 @@ workflows:
             cp -r ~/alrafeeg_api/temp_web/* ~/alrafeeg_api/test/
             # تنظيف المخلفات
             rm -rf ~/alrafeeg_api/temp_web/
+            # أرشفة الملف المضغوط بالتاريخ
             mv /root/web-web.zip /root/web-web-$(date +%Y%m%d-%H%M%S).zip
           SERVER_EOF
+
+          # تنظيف المفتاح من البيئة المؤقتة بعد الانتهاء لدواعي أمنية
+          rm -f /tmp/id_rsa
 
       # --- ثانياً: بناء الأندرويد (يتم بعد الرفع) ---
       - name: Build APK
