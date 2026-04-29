@@ -1,56 +1,106 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html dir="rtl" lang="ar">
 <head>
-  <base href="$FLUTTER_BASE_HREF">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="الرفيق - تطبيق الدردشة">
+  <meta name="description" content="الرفيق - منصة المحادثات الفورية">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="الرفيق">
-  <meta name="theme-color" content="#10B981">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <title>الرفيق</title>
   <link rel="manifest" href="manifest.json">
-  <title>الرفيق - تطبيق الدردشة</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
   <style>
-    body { background-color: #0B0D14; margin: 0; }
-    #loading {
-      position: fixed; inset: 0;
-      display: flex; align-items: center; justify-content: center;
-      flex-direction: column; gap: 16px;
-      background: linear-gradient(135deg, #0B0D14, #11131C, #0a1a14);
-      z-index: 9999;
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #0D1117;
     }
-    #loading .spinner {
-      width: 44px; height: 44px;
-      border: 3px solid rgba(16,185,129,0.2);
-      border-top-color: #10B981;
+    .loading-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      width: 100vw;
+      background: linear-gradient(135deg, #0D1117 0%, #161B22 50%, #0D1117 100%);
+      flex-direction: column;
+      gap: 16px;
+    }
+    .loading-logo {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #2F81F7, #1F6FEB);
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      box-shadow: 0 8px 24px rgba(47,129,247,0.3);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    .loading-text {
+      color: #E6EDF3;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .loading-sub {
+      color: #8B949E;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+    }
+    .loading-dots {
+      display: flex;
+      gap: 6px;
+      margin-top: 12px;
+    }
+    .loading-dots span {
+      width: 8px;
+      height: 8px;
+      background: #2F81F7;
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      animation: bounce 1.2s ease-in-out infinite;
     }
-    #loading .load-text {
-      color: #10B981;
-      font-family: sans-serif;
-      font-size: 15px;
-      font-weight: 600;
-      opacity: 0.8;
+    .loading-dots span:nth-child(2) { animation-delay: 0.15s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
   </style>
 </head>
 <body>
-  <div id="loading">
-    <div class="spinner"></div>
-    <div class="load-text">الرفيق</div>
+  <div class="loading-container" id="loading">
+    <div class="loading-logo">💬</div>
+    <div class="loading-text">الرفيق</div>
+    <div class="loading-sub">منصة المحادثات الفورية</div>
+    <div class="loading-dots">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
   </div>
-  <script src="flutter_bootstrap.js" async></script>
+
   <script>
-    window.addEventListener('load', function() {
-      setTimeout(function() {
-        var loader = document.getElementById('loading');
-        if (loader) loader.style.display = 'none';
-      }, 3000);
+    // إزالة شاشة التحميل عندما Flutter يجهز
+    window.addEventListener('flutter-first-frame', function() {
+      var loader = document.getElementById('loading');
+      if (loader) {
+        loader.style.opacity = '0';
+        loader.style.transition = 'opacity 0.3s';
+        setTimeout(function() { loader.remove(); }, 300);
+      }
     });
   </script>
+
+  <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

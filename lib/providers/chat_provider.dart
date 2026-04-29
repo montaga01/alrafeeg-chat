@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../models/message.dart';
@@ -39,6 +38,7 @@ class ChatProvider extends ChangeNotifier {
   bool get isWsConnected => _isWsConnected;
   bool get isLoadingChats => _isLoadingChats;
   bool get isLoadingMessages => _isLoadingMessages;
+  int get myId => _myId;
   List<MessageModel> get failedMessages => _failedMessages;
   WebSocketService get ws => _ws;
 

@@ -97,14 +97,10 @@ class _ChatScreenState extends State<ChatScreen> {
                     const SizedBox(width: 4),
 
                     // الأفاتار مع حالة الاتصال
-                    Stack(
-                      children: [
-                        AvatarWidget(
-                          name: currentChat.name,
-                          size: 36,
-                          isOnline: isOnline,
-                        ),
-                      ],
+                    AvatarWidget(
+                      name: currentChat.name,
+                      size: 36,
+                      isOnline: isOnline,
                     ),
                     const SizedBox(width: 12),
 
@@ -126,16 +122,12 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                           // مؤشر الكتابة أو حالة الاتصال
                           if (isTyping)
-                            const Row(
+                            Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                SizedBox(
-                                  width: 12,
-                                  height: 12,
-                                  child: _MiniTypingDots(),
-                                ),
-                                SizedBox(width: 4),
-                                Text(
+                                _MiniTypingDots(),
+                                const SizedBox(width: 4),
+                                const Text(
                                   'يكتب...',
                                   style: TextStyle(
                                     fontSize: 12,
@@ -337,37 +329,34 @@ class _ChatScreenState extends State<ChatScreen> {
             const SizedBox(width: 10),
 
             // زر الإرسال
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF2F81F7), Color(0xFF1F6FEB)],
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF2F81F7).withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF2F81F7), Color(0xFF1F6FEB)],
                 ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(22),
-                    onTap: () => _sendMessage(chat, receiverId),
-                    child: const Center(
-                      child: Icon(
-                        Icons.send_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF2F81F7).withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(22),
+                  onTap: () => _sendMessage(chat, receiverId),
+                  child: const Center(
+                    child: Icon(
+                      Icons.send_rounded,
+                      color: Colors.white,
+                      size: 20,
                     ),
                   ),
                 ),
@@ -462,8 +451,7 @@ class _MiniTypingDotsState extends State<_MiniTypingDots>
         return AnimatedBuilder(
           animation: _ctrl,
           builder: (_, __) {
-            final progress =
-                (_ctrl.value + i * 0.15) % 1.0;
+            final progress = (_ctrl.value + i * 0.15) % 1.0;
             return Container(
               width: 3,
               height: 3,
@@ -478,23 +466,5 @@ class _MiniTypingDotsState extends State<_MiniTypingDots>
         );
       }),
     );
-  }
-}
-
-/// AnimatedBuilder
-class AnimatedBuilder extends AnimatedWidget {
-  final Widget Function(BuildContext context, Widget? child) builder;
-  final Widget? child;
-
-  const AnimatedBuilder({
-    super.key,
-    required super.listenable,
-    required this.builder,
-    this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return builder(context, child);
   }
 }
