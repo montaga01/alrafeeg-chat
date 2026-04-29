@@ -8,13 +8,11 @@ import 'screens/chats_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // تثبيت الاتجاه
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // شريط الحالة الشفاف
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
@@ -50,11 +48,45 @@ class AlrafeegApp extends StatelessWidget {
                 child: child ?? const SizedBox.shrink(),
               );
             },
-            home: authProv.isAuthenticated
-                ? const ChatsScreen()
-                : const AuthScreen(),
+            // ★ التعديل هنا — ثلاث حالات بدل اثنتين
+            home: _buildHome(authProv),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildHome(AuthProvider authProv) {
+    // 1. لسه يتحمّل — اعرض شاشة التحميل
+    if (authProv.isLoading) {
+      return const _LoadingScreen();
+    }
+    // 2. مسجّل دخول
+    if (authProv.isAuthenticated) {
+      return const ChatsScreen();
+    }
+    // 3. مو مسجّل
+    return const AuthScreen();
+  }
+}
+
+// شاشة تحميل بسيطة
+class _LoadingScreen extends StatelessWidget {
+  const _LoadingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Color(0xFF0D1117),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('💬', style: TextStyle(fontSize: 48)),
+            SizedBox(height: 16),
+            CircularProgressIndicator(color: Color(0xFF2F81F7)),
+          ],
+        ),
       ),
     );
   }
