@@ -1,212 +1,34 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>الرفيق - تطبيق الدردشة</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
-<meta name="theme-color" content="#1a56db">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.json">
-<style>
-:root{--primary:#1a56db;--primary-dark:#1e429f;--primary-glow:rgba(26,86,219,.35);--bg:#f0f4ff;--surface:#fff;--surface2:#f8faff;--border:#e2e8f8;--text:#1a2340;--text2:#64748b;--online:#22c55e;--danger:#ef4444;--shadow:0 4px 24px rgba(26,86,219,.1);--shadow-lg:0 8px 40px rgba(26,86,219,.18)}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);height:100dvh;display:flex;overflow:hidden}
-.bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-.bg-canvas canvas{width:100%;height:100%}
-.app{position:relative;z-index:1;display:flex;width:100%;height:100dvh}
-.auth-screen{display:flex;align-items:center;justify-content:center;width:100%;padding:20px}
-.auth-card{background:var(--surface);border-radius:28px;padding:44px 40px;width:100%;max-width:420px;box-shadow:var(--shadow-lg);border:1px solid var(--border);animation:slideUp .5s cubic-bezier(.16,1,.3,1)}
-@keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
-.auth-logo{width:72px;height:72px;background:linear-gradient(135deg,#1a56db,#1e429f);border-radius:22px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 8px 24px var(--primary-glow);font-size:32px}
-.auth-title{text-align:center;font-size:28px;font-weight:800;color:var(--primary-dark);letter-spacing:-.5px}
-.auth-sub{text-align:center;color:var(--text2);font-size:14px;margin-top:6px;margin-bottom:28px}
-.field-wrap{position:relative;margin-bottom:14px}
-.field-wrap label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px}
-.field-wrap input{width:100%;padding:13px 16px 13px 44px;border:1.5px solid var(--border);border-radius:14px;font-family:'Tajawal',sans-serif;font-size:15px;color:var(--text);background:var(--surface2);outline:none;transition:border .2s,box-shadow .2s,background .2s}
-.field-wrap input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-glow);background:#fff}
-.field-icon{position:absolute;left:14px;bottom:13px;color:var(--text2);font-size:18px;pointer-events:none}
-.field-toggle{position:absolute;left:14px;bottom:10px;background:none;border:none;cursor:pointer;color:var(--text2);font-size:18px;padding:2px}
-.email-suggestions{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-top:-8px;margin-bottom:8px;display:none;box-shadow:var(--shadow)}
-.email-suggestions.show{display:block}
-.email-suggestion-item{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;cursor:pointer;transition:background .15s;font-size:14px}
-.email-suggestion-item:hover{background:var(--surface2)}
-.btn-primary{width:100%;height:52px;background:linear-gradient(135deg,#1a56db,#1e429f);border:none;border-radius:14px;font-family:'Tajawal',sans-serif;font-size:16px;font-weight:700;color:#fff;cursor:pointer;box-shadow:0 6px 20px var(--primary-glow);transition:transform .15s,box-shadow .15s;margin-top:8px}
-.btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 28px var(--primary-glow)}
-.btn-primary:active{transform:scale(.97)}
-.btn-primary:disabled{opacity:.7;cursor:not-allowed;transform:none}
-.btn-loader{display:none;align-items:center;justify-content:center;gap:8px}
-.btn-loader.show{display:flex}
-.dot-bounce{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.9);animation:bounce 1.2s infinite ease-in-out}
-.dot-bounce:nth-child(2){animation-delay:.2s}
-.dot-bounce:nth-child(3){animation-delay:.4s}
-@keyframes bounce{0%,80%,100%{transform:scale(.6);opacity:.5}40%{transform:scale(1.1);opacity:1}}
-.auth-switch{text-align:center;margin-top:16px;font-size:14px;color:var(--text2)}
-.auth-switch a{color:var(--primary);font-weight:600;cursor:pointer;text-decoration:none}
-.error-msg{background:#fef2f2;border:1px solid #fecaca;color:var(--danger);border-radius:10px;padding:10px 14px;font-size:13px;display:none;align-items:center;gap:8px;margin-bottom:12px}
-.error-msg.show{display:flex}
-.main-app{display:none;width:100%}
-.main-app.show{display:flex}
-.sidebar{width:340px;min-width:280px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;height:100dvh}
-.sidebar-header{padding:20px 18px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.sidebar-brand{font-size:22px;font-weight:800;color:var(--primary-dark)}
-.sidebar-actions{display:flex;gap:6px}
-.icon-btn{width:38px;height:38px;border-radius:12px;border:none;background:var(--surface2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--text2);transition:background .15s,color .15s}
-.icon-btn:hover{background:#e0e7ff;color:var(--primary)}
-.search-box{padding:10px 14px;border-bottom:1px solid var(--border)}
-.search-input-wrap{position:relative}
-.search-input-wrap input{width:100%;padding:10px 14px 10px 38px;border:1.5px solid var(--border);border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;background:var(--surface2);outline:none;transition:border .2s}
-.search-input-wrap input:focus{border-color:var(--primary)}
-.search-input-wrap .s-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text2);font-size:16px}
-.search-results{display:none;flex-direction:column;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;margin-top:8px;overflow:hidden;box-shadow:var(--shadow);max-height:220px;overflow-y:auto}
-.search-results.show{display:flex}
-.search-result-item{display:flex;align-items:center;gap:12px;padding:11px 14px;cursor:pointer;transition:background .15s}
-.search-result-item:hover{background:var(--surface2)}
-.chats-list{flex:1;overflow-y:auto;padding:8px 0}
-.chats-list::-webkit-scrollbar{width:4px}
-.chats-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
-.chat-item{display:flex;align-items:center;gap:12px;padding:12px 18px;cursor:pointer;transition:background .15s}
-.chat-item:hover{background:var(--surface2)}
-.chat-item.active{background:#e0e7ff}
-.avatar{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#c7d7ff,#e0e7ff);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--primary);flex-shrink:0;position:relative}
-.avatar.lg{width:38px;height:38px;font-size:16px}
-.avatar.sm{width:36px;height:36px;font-size:14px}
-.chat-info{flex:1;min-width:0}
-.chat-name{font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chat-last{font-size:13px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-.chat-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
-.chat-time{font-size:11px;color:var(--text2)}
-.unread-badge{background:var(--primary);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;min-width:20px;text-align:center;display:none}
-.empty-chats{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text2);padding:40px;text-align:center}
-.empty-chats .emoji{font-size:52px}
-.chat-area{flex:1;display:flex;flex-direction:column;height:100dvh;background:var(--surface2);position:relative}
-.chat-placeholder{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text2)}
-.chat-placeholder .big-icon{font-size:64px}
-.chat-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 20px;display:none;align-items:center;justify-content:space-between}
-.chat-header.show{display:flex}
-.chat-header-info{display:flex;align-items:center;gap:12px}
-.chat-header-name{font-size:16px;font-weight:700}
-.chat-header-status{font-size:12px;color:var(--text2)}
-.messages-area{flex:1;overflow-y:auto;padding:16px 20px;display:none;flex-direction:column;gap:4px}
-.messages-area.show{display:flex}
-.messages-area::-webkit-scrollbar{width:4px}
-.messages-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
-.day-divider{display:flex;align-items:center;gap:10px;margin:12px 0;color:var(--text2);font-size:12px}
-.day-divider::before,.day-divider::after{content:'';flex:1;height:1px;background:var(--border)}
-.day-divider span{background:var(--surface);padding:3px 12px;border-radius:20px;border:1px solid var(--border);white-space:nowrap}
-.msg-row{display:flex;align-items:flex-end;gap:6px;animation:msgIn .25s cubic-bezier(.16,1,.3,1)}
-@keyframes msgIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.msg-row.me{flex-direction:row-reverse}
-.msg-bubble{max-width:65%;padding:10px 14px;border-radius:18px;font-size:14.5px;line-height:1.6;position:relative;word-break:break-word;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-.msg-row.me .msg-bubble{background:linear-gradient(135deg,#1a56db,#1e429f);color:#fff;border-bottom-right-radius:4px}
-.msg-row.other .msg-bubble{background:#fff;color:var(--text);border-bottom-left-radius:4px;border:1px solid var(--border)}
-.msg-time{font-size:10.5px;margin-top:4px;display:flex;align-items:center;justify-content:flex-end;gap:3px}
-.msg-row.me .msg-time{color:rgba(255,255,255,.65)}
-.msg-row.other .msg-time{color:var(--text2)}
-.msg-avatar{width:28px;height:28px;flex-shrink:0}
-.input-area{background:var(--surface);border-top:1px solid var(--border);padding:12px 16px;display:none}
-.input-area.show{display:block}
-.input-row{display:flex;align-items:center;gap:10px}
-.msg-input{flex:1;padding:12px 16px;border:1.5px solid var(--border);border-radius:24px;font-family:'Tajawal',sans-serif;font-size:14.5px;background:var(--surface2);outline:none;transition:border .2s;resize:none;max-height:120px;overflow-y:auto;line-height:1.5}
-.msg-input:focus{border-color:var(--primary)}
-.send-btn{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#1a56db,#1e429f);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;box-shadow:0 4px 14px var(--primary-glow);transition:transform .15s,box-shadow .15s;font-size:20px;color:#fff}
-.send-btn:hover{transform:scale(1.08);box-shadow:0 6px 20px var(--primary-glow)}
-.send-btn:active{transform:scale(.94)}
-.back-btn{display:none;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:var(--surface2);border:none;cursor:pointer;font-size:20px;color:var(--text)}
-@media(max-width:700px){.sidebar{width:100%;display:none;position:fixed;inset:0;z-index:10}.sidebar.mobile-show{display:flex}.chat-area{width:100%}.back-btn{display:flex!important}}
-.loader{display:flex;align-items:center;justify-content:center;padding:40px;gap:8px}
-.loader-dot{width:10px;height:10px;border-radius:50%;background:var(--primary);opacity:.3;animation:bounce 1.2s infinite ease-in-out}
-.loader-dot:nth-child(2){animation-delay:.2s}
-.loader-dot:nth-child(3){animation-delay:.4s}
-.install-btn{position:fixed;bottom:20px;left:20px;background:var(--primary);color:white;border:none;border-radius:12px;padding:10px 18px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);display:none;z-index:100}
-.install-btn.show{display:flex;align-items:center;gap:8px}
-</style>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="الرفيق - تطبيق الدردشة">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="الرفيق">
+  <meta name="theme-color" content="#1a56db">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <title>الرفيق - تطبيق الدردشة</title>
+  <style>
+    body { background-color: #f0f4ff; margin: 0; }
+    #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1a56db, #1e429f, #0f2a6e); z-index: 9999; }
+    #loading .spinner { width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
 </head>
 <body>
-<div class="bg-canvas"><canvas id="bgCanvas"></canvas></div>
-<div class="app">
-  <div class="auth-screen" id="authScreen">
-    <div class="auth-card">
-      <div class="auth-logo">💬</div>
-      <div class="auth-title">الرفيق</div>
-      <div class="auth-sub" id="authSub">سجّل دخولك للمتابعة</div>
-      <div class="error-msg" id="authError"><span>⚠️</span><span id="authErrorText"></span></div>
-      <div id="loginForm">
-        <div class="field-wrap"><label>البريد الإلكتروني</label><input type="email" id="loginEmail" placeholder="example@mail.com" autocomplete="off" inputmode="email"><span class="field-icon">✉️</span></div>
-        <div class="email-suggestions" id="emailSuggestions"></div>
-        <div class="field-wrap"><label>كلمة المرور</label><input type="password" id="loginPassword" placeholder="••••••••"><button class="field-toggle" id="togglePassword" type="button">👁️</button></div>
-        <button class="btn-primary" id="loginBtn" onclick="doLogin()"><span class="btn-text" id="loginBtnText">تسجيل الدخول</span><span class="btn-loader" id="loginLoader"><div class="dot-bounce"></div><div class="dot-bounce"></div><div class="dot-bounce"></div></span></button>
-        <div class="auth-switch">ليس لديك حساب؟ <a onclick="showRegister()">سجّل الآن</a></div>
-      </div>
-      <div id="registerForm" style="display:none">
-        <div class="field-wrap"><label>الاسم الكامل</label><input type="text" id="regName" placeholder="اسمك الكامل"><span class="field-icon">👤</span></div>
-        <div class="field-wrap"><label>البريد الإلكتروني</label><input type="email" id="regEmail" placeholder="example@mail.com"><span class="field-icon">✉️</span></div>
-        <div class="field-wrap"><label>كلمة المرور</label><input type="password" id="regPassword" placeholder="6 أحرف على الأقل"><button class="field-toggle" id="toggleRegPassword" type="button">👁️</button></div>
-        <button class="btn-primary" id="registerBtn" onclick="doRegister()"><span class="btn-text" id="registerBtnText">إنشاء حساب</span><span class="btn-loader" id="registerLoader"><div class="dot-bounce"></div><div class="dot-bounce"></div><div class="dot-bounce"></div></span></button>
-        <div class="auth-switch">لديك حساب؟ <a onclick="showLogin()">سجّل الدخول</a></div>
-      </div>
-    </div>
-  </div>
-  <div class="main-app" id="mainApp">
-    <div class="sidebar" id="sidebar">
-      <div class="sidebar-header"><div class="sidebar-brand">الرفيق 💬</div><div class="sidebar-actions"><button class="icon-btn" title="بحث" onclick="toggleSearch()">🔍</button><button class="icon-btn" title="خروج" onclick="logout()">🚪</button></div></div>
-      <div class="search-box" id="searchBox" style="display:none"><div class="search-input-wrap"><input type="text" id="searchInput" placeholder="ابحث باسم أو ID..." oninput="onSearch(this.value)"><span class="s-icon">🔍</span></div><div class="search-results" id="searchResults"></div></div>
-      <div class="chats-list" id="chatsList"><div class="loader"><div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div></div></div>
-    </div>
-    <div class="chat-area">
-      <div class="chat-placeholder" id="chatPlaceholder"><div class="big-icon">💬</div><p>اختر محادثة أو ابحث عن شخص</p></div>
-      <div class="chat-header" id="chatHeader"><div class="chat-header-info"><button class="back-btn" id="backBtn" onclick="showSidebar()">←</button><div class="avatar lg" id="chatAvatar">?</div><div><div class="chat-header-name" id="chatHeaderName">-</div><div class="chat-header-status" id="chatHeaderStatus">...</div></div></div></div>
-      <div class="messages-area" id="messagesArea"></div>
-      <div class="input-area" id="inputArea"><div class="input-row"><textarea class="msg-input" id="msgInput" placeholder="اكتب رسالة..." rows="1" onkeydown="onMsgKey(event)" oninput="autoResize(this)"></textarea><button class="send-btn" onclick="sendMessage()">➤</button></div></div>
-    </div>
-  </div>
-</div>
-<button class="install-btn" id="installBtn" onclick="installApp()">📱 تثبيت التطبيق</button>
-<script>
-const BASE='https://chat.alrafeeg.com',WS_BASE='wss://chat.alrafeeg.com/ws/chat';
-let token=localStorage.getItem('token'),myId=parseInt(localStorage.getItem('userId')||'0'),myName=localStorage.getItem('userName')||'',currentChat=null,ws=null,wsReconnectTimer=null,messageCache={},chatsCache=[],unreadCounts={},savedEmails=JSON.parse(localStorage.getItem('savedEmails')||'[]'),deferredPrompt=null;
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('installBtn').classList.add('show')});
-function installApp(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(r=>{if(r.outcome==='accepted')document.getElementById('installBtn').classList.remove('show');deferredPrompt=null})}}
-(function(){const c=document.getElementById('bgCanvas'),x=c.getContext('2d');let dots=[];const r=()=>{c.width=window.innerWidth;c.height=window.innerHeight};r();window.addEventListener('resize',r);for(let i=0;i<25;i++)dots.push({x:Math.random(),y:Math.random(),r:Math.random()*5+2,speed:Math.random()*.08+.02,angle:Math.random()*Math.PI*2,opacity:Math.random()*.12+.03});let t=0;const d=()=>{x.clearRect(0,0,c.width,c.height);t+=.003;dots.forEach(p=>{const y=((p.y+t*p.speed)%1)*c.height,x2=(p.x+Math.sin(t*2+p.angle)*.015)*c.width;x.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3+t,br=i%2===0?p.r:p.r*.5;i===0?x.moveTo(x2+br*Math.cos(a),y+br*Math.sin(a)):x.lineTo(x2+br*Math.cos(a),y+br*Math.sin(a))}x.closePath();x.fillStyle=`rgba(26,86,219,${p.opacity})`;x.fill()});requestAnimationFrame(d)};d()})();
-window.onload=()=>{loadSavedEmails();if(token){showApp()}else{document.getElementById('authScreen').style.display='flex'}document.getElementById('loginEmail').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('loginPassword').focus()});document.getElementById('loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});document.getElementById('regName').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('regEmail').focus()});document.getElementById('regEmail').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('regPassword').focus()});document.getElementById('regPassword').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister()});document.getElementById('loginEmail').addEventListener('focus',showEmailSuggestions);document.getElementById('loginEmail').addEventListener('input',showEmailSuggestions);document.addEventListener('click',e=>{if(!e.target.closest('.field-wrap'))document.getElementById('emailSuggestions').classList.remove('show')});document.getElementById('togglePassword').onclick=()=>{const i=document.getElementById('loginPassword');i.type=i.type==='password'?'text':'password'};document.getElementById('toggleRegPassword').onclick=()=>{const i=document.getElementById('regPassword');i.type=i.type==='password'?'text':'password'}};
-function loadSavedEmails(){savedEmails=JSON.parse(localStorage.getItem('savedEmails')||'[]')}
-function saveEmail(e){savedEmails=savedEmails.filter(x=>x!==e);savedEmails.unshift(e);if(savedEmails.length>5)savedEmails.pop();localStorage.setItem('savedEmails',JSON.stringify(savedEmails))}
-function removeEmail(e){savedEmails=savedEmails.filter(x=>x!==e);localStorage.setItem('savedEmails',JSON.stringify(savedEmails));showEmailSuggestions()}
-function showEmailSuggestions(){const i=document.getElementById('loginEmail').value.toLowerCase(),b=document.getElementById('emailSuggestions'),f=savedEmails.filter(e=>e.toLowerCase().includes(i));if(!f.length){b.classList.remove('show');return}b.innerHTML=f.map(e=>`<div class="email-suggestion-item"><span onclick="selectEmail('${e}')">✉️ ${e}</span></div>`).join('');b.classList.add('show')}
-function selectEmail(e){document.getElementById('loginEmail').value=e;document.getElementById('emailSuggestions').classList.remove('show');document.getElementById('loginPassword').focus()}
-async function doLogin(){const e=document.getElementById('loginEmail').value.trim(),p=document.getElementById('loginPassword').value;if(!e||!p)return showAuthError('يرجى ملء جميع الحقول');setBtnLoading('login',true);clearAuthError();try{const r=await fetch(`${BASE}/api/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e,password:p})});const d=await r.json();if(!r.ok)throw new Error(d.detail||'خطأ في تسجيل الدخول');token=d.data.token;myId=d.data.user.id;myName=d.data.user.name;localStorage.setItem('token',token);localStorage.setItem('userId',myId);localStorage.setItem('userName',myName);saveEmail(e);showApp()}catch(err){showAuthError(err.message)}finally{setBtnLoading('login',false)}}
-async function doRegister(){const n=document.getElementById('regName').value.trim(),e=document.getElementById('regEmail').value.trim(),p=document.getElementById('regPassword').value;if(!n||!e||!p)return showAuthError('يرجى ملء جميع الحقول');setBtnLoading('register',true);clearAuthError();try{const r=await fetch(`${BASE}/api/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,email:e,password:p})});const d=await r.json();if(!r.ok)throw new Error(d.detail||'خطأ في التسجيل');showLogin();document.getElementById('loginEmail').value=e;showAuthError('تم التسجيل! سجّل دخولك الآن ✅','success')}catch(err){showAuthError(err.message)}finally{setBtnLoading('register',false)}}
-function setBtnLoading(f,l){const b=document.getElementById(`${f}Btn`),t=document.getElementById(`${f}BtnText`),lo=document.getElementById(`${f}Loader`);b.disabled=l;t.style.display=l?'none':'';lo.style.display=l?'flex':'none'}
-function showAuthError(m,t='error'){const e=document.getElementById('authError');e.style.background=t==='success'?'#f0fdf4':'#fef2f2';e.style.borderColor=t==='success'?'#bbf7d0':'#fecaca';e.style.color=t==='success'?'#166534':'#ef4444';document.getElementById('authErrorText').textContent=m;e.classList.add('show')}
-function clearAuthError(){document.getElementById('authError').classList.remove('show')}
-function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('registerForm').style.display='block';document.getElementById('authSub').textContent='أنشئ حسابك الجديد';clearAuthError()}
-function showLogin(){document.getElementById('registerForm').style.display='none';document.getElementById('loginForm').style.display='block';document.getElementById('authSub').textContent='سجّل دخولك للمتابعة';clearAuthError()}
-function showApp(){document.getElementById('authScreen').style.display='none';document.getElementById('mainApp').classList.add('show');loadChats();connectWebSocket()}
-function logout(){if(!confirm('هل تريد تسجيل الخروج؟'))return;localStorage.removeItem('token');localStorage.removeItem('userId');localStorage.removeItem('userName');token=null;myId=0;myName='';if(ws)ws.close();location.reload()}
-function connectWebSocket(){if(!token)return;if(ws)ws.close();ws=new WebSocket(`${WS_BASE}/${token}`);ws.onopen=()=>{console.log('WS connected');clearTimeout(wsReconnectTimer)};ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.status==='sent'||m.error)return;handleIncomingMessage(m)};ws.onclose=()=>{console.log('WS reconnecting...');wsReconnectTimer=setTimeout(connectWebSocket,3000)};ws.onerror=()=>ws.close()}
-function handleIncomingMessage(msg){const oId=msg.sender_id===myId?msg.receiver_id:msg.sender_id,oName=currentChat?.id===oId?currentChat.name:'';if(!messageCache[oId])messageCache[oId]=[];if(!messageCache[oId].some(m=>m.id===msg.id))messageCache[oId].push(msg);updateChatInList(oId,oName||`مستخدم ${oId}`,msg);if(currentChat&&currentChat.id===oId){appendMessage(msg);scrollToBottom()}else{unreadCounts[oId]=(unreadCounts[oId]||0)+1;updateUnreadBadge(oId);showNotification(msg.sender_id===myId?myName:`مستخدم ${oId}`,msg.content)}}
-function showNotification(n,b){if(Notification.permission==='granted')new Notification(`رسالة من ${n}`,{body:b})}
-async function loadChats(){const c=JSON.parse(localStorage.getItem('chatsCache')||'[]');if(c.length)renderChats(c);try{const r=await fetch(`${BASE}/api/chats`,{headers:{'Authorization':`Bearer ${token}`}});const d=await r.json();if(!r.ok)return;chatsCache=d.data;localStorage.setItem('chatsCache',JSON.stringify(chatsCache));renderChats(chatsCache)}catch(e){}}
-function renderChats(c){const e=document.getElementById('chatsList');if(!c.length){e.innerHTML='<div class="empty-chats"><div class="emoji">💬</div><p>لا توجد محادثات بعد</p></div>';return}e.innerHTML=c.map(x=>`<div class="chat-item ${currentChat?.id===x.user_id?'active':''}" id="chat-item-${x.user_id}" onclick="openChat(${x.user_id},'${escHtml(x.name)}')"><div class="avatar">${x.name[0].toUpperCase()}</div><div class="chat-info"><div class="chat-name">${escHtml(x.name)}</div><div class="chat-last">${escHtml(x.content||'')}</div></div><div class="chat-meta"><div class="chat-time">${formatTime(x.timestamp)}</div><div class="unread-badge" id="badge-${x.user_id}" style="display:${unreadCounts[x.user_id]?'block':'none'}">${unreadCounts[x.user_id]||''}</div></div></div>`).join('')}
-function updateChatInList(u,n,m){const i=chatsCache.findIndex(c=>c.user_id===u),up={user_id:u,name:n||`مستخدم ${u}`,content:m.content,timestamp:m.timestamp};if(i>=0)chatsCache[i]=up;else chatsCache.unshift(up);chatsCache.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));localStorage.setItem('chatsCache',JSON.stringify(chatsCache));renderChats(chatsCache)}
-function updateUnreadBadge(u){const b=document.getElementById(`badge-${u}`);if(!b)return;const c=unreadCounts[u]||0;b.style.display=c>0?'block':'none';b.textContent=c}
-async function openChat(u,n){currentChat={id:u,name:n};unreadCounts[u]=0;if(window.innerWidth<=700)document.getElementById('sidebar').classList.remove('mobile-show');document.getElementById('chatHeader').classList.add('show');document.getElementById('chatHeaderName').textContent=n;document.getElementById('chatHeaderStatus').textContent='متصل';document.getElementById('chatAvatar').textContent=n[0].toUpperCase();document.getElementById('typingAvatar').textContent=n[0].toUpperCase();document.getElementById('chatPlaceholder').style.display='none';document.getElementById('messagesArea').classList.add('show');document.getElementById('inputArea').classList.add('show');document.querySelectorAll('.chat-item').forEach(e=>e.classList.remove('active'));const it=document.getElementById(`chat-item-${u}`);if(it)it.classList.add('active');updateUnreadBadge(u);if(Notification.permission==='default')Notification.requestPermission();const me=document.getElementById('messagesArea');if(messageCache[u]?.length){renderMessages(messageCache[u]);scrollToBottom(false)}else{me.innerHTML='<div class="loader"><div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div></div>'}try{const r=await fetch(`${BASE}/api/messages/${u}`,{headers:{'Authorization':`Bearer ${token}`}});const d=await r.json();if(!r.ok)return;messageCache[u]=d.data;renderMessages(d.data);scrollToBottom()}catch(e){me.innerHTML='<div style="text-align:center;padding:20px;color:#94a3b8">تعذّر تحميل الرسائل</div>'}}
-function renderMessages(msgs){const e=document.getElementById('messagesArea');if(!msgs.length){e.innerHTML='<div style="text-align:center;padding:40px;color:#94a3b8;font-size:15px">ابدأ المحادثة! 👋</div>';return}let h='',ld='';msgs.forEach(m=>{const ts=new Date(m.timestamp),dl=getDayLabel(ts);if(dl!==ld){h+=`<div class="day-divider"><span>${dl}</span></div>`;ld=dl}const me=m.sender_id===myId,t=formatTime(m.timestamp,true),a=currentChat?.name?.[0]?.toUpperCase()||'?';h+=`<div class="msg-row ${me?'me':'other'}">${!me?`<div class="avatar msg-avatar">${a}</div>`:''}<div class="msg-bubble"><div>${escHtml(m.content)}</div><div class="msg-time">${t}${me?' ✓✓':''}</div></div></div>`});e.innerHTML=h}
-function appendMessage(m){const e=document.getElementById('messagesArea');if(e.querySelector('[style*="ابدأ"]'))e.innerHTML='';const me=m.sender_id===myId,t=formatTime(m.timestamp,true),a=currentChat?.name?.[0]?.toUpperCase()||'?';const r=document.createElement('div');r.className=`msg-row ${me?'me':'other'}`;r.innerHTML=`${!me?`<div class="avatar msg-avatar">${a}</div>`:''}<div class="msg-bubble"><div>${escHtml(m.content)}</div><div class="msg-time">${t}${me?' ✓✓':''}</div></div>`;e.appendChild(r)}
-async function sendMessage(){if(!currentChat)return;const i=document.getElementById('msgInput'),t=i.value.trim();if(!t)return;i.value='';i.style.height='';const tmp={id:Date.now(),sender_id:myId,receiver_id:currentChat.id,content:t,timestamp:new Date().toISOString()};if(!messageCache[currentChat.id])messageCache[currentChat.id]=[];messageCache[currentChat.id].push(tmp);appendMessage(tmp);scrollToBottom();updateChatInList(currentChat.id,currentChat.name,tmp);if(ws?.readyState===WebSocket.OPEN){ws.send(JSON.stringify({receiver_id:currentChat.id,content:t}))}else{try{await fetch(`${BASE}/api/messages/send`,{method:'POST',headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({receiver_id:currentChat.id,content:t})})}catch(e){}}}
-function onMsgKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}}
-function autoResize(e){e.style.height='auto';e.style.height=Math.min(e.scrollHeight,120)+'px'}
-function scrollToBottom(s=true){const e=document.getElementById('messagesArea');setTimeout(()=>{e.scrollTo({top:e.scrollHeight,behavior:s?'smooth':'auto'})},50)}
-let searchTimer;function toggleSearch(){const b=document.getElementById('searchBox');b.style.display=b.style.display==='none'?'block':'none';if(b.style.display==='block')document.getElementById('searchInput').focus()}
-function onSearch(q){clearTimeout(searchTimer);if(q.length<1){document.getElementById('searchResults').classList.remove('show');return}searchTimer=setTimeout(()=>doSearch(q),400)}
-async function doSearch(q){const r=document.getElementById('searchResults');r.innerHTML='<div style="padding:12px;text-align:center;color:#94a3b8">جاري البحث...</div>';r.classList.add('show');try{const res=await fetch(`${BASE}/api/users/search`,{method:'POST',headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({query:q})});const d=await res.json();const u=d.data||[];if(!u.length){r.innerHTML='<div style="padding:12px;text-align:center;color:#94a3b8">لا توجد نتائج</div>';return}r.innerHTML=u.map(x=>`<div class="search-result-item" onclick="startChat(${x.id},'${escHtml(x.name)}')"><div class="avatar sm">${x.name[0].toUpperCase()}</div><div><div style="font-weight:600;font-size:14px">${escHtml(x.name)}</div><div style="font-size:12px;color:#94a3b8">ID: ${x.id}</div></div></div>`).join('')}catch(e){r.innerHTML='<div style="padding:12px;text-align:center;color:#ef4444">خطأ في البحث</div>'}}
-function startChat(u,n){document.getElementById('searchResults').classList.remove('show');document.getElementById('searchInput').value='';document.getElementById('searchBox').style.display='none';openChat(u,n)}
-function showSidebar(){document.getElementById('sidebar').classList.add('mobile-show')}
-function formatTime(ts,wt=false){if(!ts)return'';const d=new Date(ts);if(isNaN(d))return'';const n=new Date(),td=d.toDateString()===n.toDateString(),t=d.toLocaleTimeString('ar',{hour:'2-digit',minute:'2-digit'});if(wt)return t;if(td)return t;const df=Math.floor((n-d)/86400000);if(df===1)return'أمس';if(df<7)return d.toLocaleDateString('ar',{weekday:'long'});return d.toLocaleDateString('ar',{day:'numeric',month:'short'})}
-function getDayLabel(d){const n=new Date(),dt=new Date(d);if(dt.toDateString()===n.toDateString())return'اليوم';const y=new Date(n);y.setDate(n.getDate()-1);if(dt.toDateString()===y.toDateString())return'أمس';const df=Math.floor((n-dt)/86400000);if(df<7)return dt.toLocaleDateString('ar',{weekday:'long'});return dt.toLocaleDateString('ar',{day:'numeric',month:'long',year:'numeric'})}
-function escHtml(s){if(!s)return'';return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-</script>
+  <div id="loading"><div class="spinner"></div></div>
+  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        var loader = document.getElementById('loading');
+        if (loader) loader.style.display = 'none';
+      }, 3000);
+    });
+  </script>
 </body>
 </html>

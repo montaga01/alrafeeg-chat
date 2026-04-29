@@ -47,12 +47,6 @@ class AlrafeegApp extends StatelessWidget {
           centerTitle: false,
         ),
       ),
-      builder: (context, child) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: child ?? const SizedBox(),
-        );
-      },
       home: const _Splash(),
     );
   }
