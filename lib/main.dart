@@ -48,29 +48,18 @@ class AlrafeegApp extends StatelessWidget {
                 child: child ?? const SizedBox.shrink(),
               );
             },
-            // ★ التعديل هنا — ثلاث حالات بدل اثنتين
-            home: _buildHome(authProv),
+            home: authProv.isInitializing    // ★ التغيير هنا
+                ? const _LoadingScreen()
+                : authProv.isAuthenticated
+                    ? const ChatsScreen()
+                    : const AuthScreen(),
           );
         },
       ),
     );
   }
-
-  Widget _buildHome(AuthProvider authProv) {
-    // 1. لسه يتحمّل — اعرض شاشة التحميل
-    if (authProv.isLoading) {
-      return const _LoadingScreen();
-    }
-    // 2. مسجّل دخول
-    if (authProv.isAuthenticated) {
-      return const ChatsScreen();
-    }
-    // 3. مو مسجّل
-    return const AuthScreen();
-  }
 }
 
-// شاشة تحميل بسيطة
 class _LoadingScreen extends StatelessWidget {
   const _LoadingScreen();
 

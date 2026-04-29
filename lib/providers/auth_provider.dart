@@ -11,12 +11,14 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   List<String> _emailHistory = [];
+  bool _isInitializing = true;  // ★ أضف هذا
 
   String? get token => _token;
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAuthenticated => _token != null && _user != null;
+  bool get isInitializing => _isInitializing;  // ★ أضف هذا
   int get myId => _user?.id ?? 0;
   String get myName => _user?.name ?? '';
   List<String> get emailHistory => _emailHistory;
@@ -25,25 +27,28 @@ class AuthProvider extends ChangeNotifier {
     _loadSession();
   }
 
-  /// تحميل الجلسة المحفوظة
   Future<void> _loadSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString('token');
-    final id = prefs.getInt('userId') ?? 0;
-    final name = prefs.getString('userName') ?? '';
-    final email = prefs.getString('userEmail') ?? '';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _token = prefs.getString('token');
+      final id = prefs.getInt('userId') ?? 0;
+      final name = prefs.getString('userName') ?? '';
+      final email = prefs.getString('userEmail') ?? '';
 
-    if (_token != null && id != 0) {
-      _user = UserModel(id: id, name: name, email: email);
+      if (_token != null && id != 0) {
+        _user = UserModel(id: id, name: name, email: email);
+      }
+
+      _emailHistory = prefs.getStringList('emailHistory') ?? [];
+    } catch (e) {
+      _token = null;
+      _user = null;
+    } finally {
+      _isInitializing = false;  // ★ أضف هذا
+      notifyListeners();
     }
-
-    // تحميل تاريخ البريد
-    _emailHistory = prefs.getStringList('emailHistory') ?? [];
-
-    notifyListeners();
   }
 
-  /// حفظ الجلسة
   Future<void> _saveSession(Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
     _token = data['token'] as String;
@@ -56,7 +61,6 @@ class AuthProvider extends ChangeNotifier {
     await prefs.setString('userEmail', _user!.email);
   }
 
-  /// حفظ البريد في التاريخ
   Future<void> _saveEmailToHistory(String email) async {
     _emailHistory = _emailHistory.where((e) => e != email).toList();
     _emailHistory.insert(0, email);
@@ -65,7 +69,6 @@ class AuthProvider extends ChangeNotifier {
     await prefs.setStringList('emailHistory', _emailHistory);
   }
 
-  /// تسجيل الدخول
   Future<bool> login({required String email, required String password}) async {
     _isLoading = true;
     _error = null;
@@ -86,7 +89,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// إنشاء حساب
   Future<bool> register({
     required String name,
     required String email,
@@ -97,9 +99,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // إنشاء الحساب
       await _api.register(name: name, email: email, password: password);
-      // تسجيل الدخول مباشرة
       final data = await _api.login(email: email, password: password);
       await _saveSession(data);
       await _saveEmailToHistory(email);
@@ -114,7 +114,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// تسجيل الخروج
   Future<void> logout() async {
     _token = null;
     _user = null;
@@ -126,7 +125,6 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// مسح الخطأ
   void clearError() {
     _error = null;
     notifyListeners();
