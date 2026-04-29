@@ -1,97 +1,152 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../core/constants.dart';
-import '../core/storage.dart';
+import '../config/app_config.dart';
 import '../models/user.dart';
 import '../models/message.dart';
+import '../models/chat.dart';
 
 class ApiService {
-  // ========== Auth Headers ==========
-  static Future<Map<String, String>> _headers() async {
-    final token = await AppStorage.getToken();
-    return {
-      'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
-  }
+  final String baseUrl = AppConfig.baseUrl;
 
-  // ========== تسجيل دخول ==========
-  static Future<Map<String, dynamic>> login({
+  /// Headers مع التوكن
+  Map<String, String> _headers(String token) => {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+
+  // ═══════════════════════════════════════════════════
+  //  AUTH
+  // ═══════════════════════════════════════════════════
+
+  /// تسجيل الدخول
+  Future<Map<String, dynamic>> login({
     required String email,
     required String password,
   }) async {
     final res = await http.post(
-      Uri.parse('${AppConstants.baseUrl}/api/login'),
+      Uri.parse('$baseUrl/api/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email, 'password': password}),
     );
+
     final data = jsonDecode(res.body);
-    if (res.statusCode != 200) throw data['detail'] ?? 'خطأ في تسجيل الدخول';
+    if (res.statusCode != 200) {
+      throw data['detail'] ?? 'خطأ في تسجيل الدخول';
+    }
     return data['data'];
   }
 
-  // ========== تسجيل حساب ==========
-  static Future<Map<String, dynamic>> register({
+  /// إنشاء حساب
+  Future<Map<String, dynamic>> register({
     required String name,
     required String email,
     required String password,
   }) async {
     final res = await http.post(
-      Uri.parse('${AppConstants.baseUrl}/api/register'),
+      Uri.parse('$baseUrl/api/register'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'name': name, 'email': email, 'password': password}),
     );
+
     final data = jsonDecode(res.body);
-    if (res.statusCode != 200) throw data['detail'] ?? 'خطأ في التسجيل';
-    return data;
+    if (res.statusCode != 200) {
+      throw data['detail'] ?? 'خطأ في التسجيل';
+    }
+    return data['data'];
   }
 
-  // ========== البحث عن مستخدمين ==========
-  static Future<List<ChatUser>> searchUsers(String query) async {
-    final res = await http.post(
-      Uri.parse('${AppConstants.baseUrl}/api/users/search'),
-      headers: await _headers(),
-      body: jsonEncode({'query': query}),
-    );
-    final data = jsonDecode(res.body);
-    if (res.statusCode != 200) throw data['detail'] ?? 'خطأ في البحث';
-    return (data['data'] as List).map((u) => ChatUser.fromJson(u)).toList();
-  }
+  // ═══════════════════════════════════════════════════
+  //  SEARCH
+  // ═══════════════════════════════════════════════════
 
-  // ========== قائمة المحادثات ==========
-  static Future<List<Map<String, dynamic>>> getChats() async {
-    final res = await http.get(
-      Uri.parse('${AppConstants.baseUrl}/api/chats'),
-      headers: await _headers(),
-    );
-    final data = jsonDecode(res.body);
-    if (res.statusCode != 200) throw data['detail'] ?? 'خطأ';
-    return List<Map<String, dynamic>>.from(data['data']);
-  }
-
-  // ========== رسائل محادثة ==========
-  static Future<List<Message>> getMessages(int withUserId) async {
-    final res = await http.get(
-      Uri.parse('${AppConstants.baseUrl}/api/messages/$withUserId'),
-      headers: await _headers(),
-    );
-    final data = jsonDecode(res.body);
-    if (res.statusCode != 200) throw data['detail'] ?? 'خطأ';
-    return (data['data'] as List).map((m) => Message.fromJson(m)).toList();
-  }
-
-  // ========== إرسال رسالة (HTTP fallback) ==========
-  static Future<Message> sendMessage({
-    required int receiverId,
-    required String content,
+  /// البحث عن مستخدمين
+  Future<List<UserModel>> searchUsers({
+    required String query,
+    required String token,
   }) async {
     final res = await http.post(
-      Uri.parse('${AppConstants.baseUrl}/api/messages/send'),
-      headers: await _headers(),
+      Uri.parse('$baseUrl/api/users/search'),
+      headers: _headers(token),
+      body: jsonEncode({'query': query}),
+    );
+
+    if (res.statusCode != 200) throw 'خطأ في البحث';
+    final data = jsonDecode(res.body);
+    return (data['data'] as List)
+        .map((u) => UserModel.fromJson(u))
+        .toList();
+  }
+
+  // ═══════════════════════════════════════════════════
+  //  CHATS
+  // ═══════════════════════════════════════════════════
+
+  /// جلب قائمة المحادثات
+  Future<List<ChatModel>> getChats({required String token}) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/api/chats'),
+      headers: _headers(token),
+    );
+
+    if (res.statusCode != 200) throw 'خطأ في تحميل المحادثات';
+    final data = jsonDecode(res.body);
+    return (data['data'] as List)
+        .map((c) => ChatModel.fromJson(c))
+        .toList();
+  }
+
+  // ═══════════════════════════════════════════════════
+  //  MESSAGES
+  // ═══════════════════════════════════════════════════
+
+  /// جلب الرسائل مع مستخدم
+  Future<List<MessageModel>> getMessages({
+    required int withUserId,
+    required String token,
+  }) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/api/messages/$withUserId'),
+      headers: _headers(token),
+    );
+
+    if (res.statusCode != 200) throw 'خطأ في تحميل الرسائل';
+    final data = jsonDecode(res.body);
+    return (data['data'] as List)
+        .map((m) => MessageModel.fromJson(m))
+        .toList();
+  }
+
+  /// إرسال رسالة عبر HTTP (fallback)
+  Future<MessageModel> sendMessage({
+    required int receiverId,
+    required String content,
+    required String token,
+    required int myId,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/api/messages/send'),
+      headers: _headers(token),
       body: jsonEncode({'receiver_id': receiverId, 'content': content}),
     );
+
+    if (res.statusCode != 200) throw 'خطأ في إرسال الرسالة';
     final data = jsonDecode(res.body);
-    if (res.statusCode != 200) throw data['detail'] ?? 'خطأ في الإرسال';
-    return Message.fromJson(data['data']);
+    return MessageModel.fromJson(data['data']);
+  }
+
+  // ═══════════════════════════════════════════════════
+  //  FCM TOKEN
+  // ═══════════════════════════════════════════════════
+
+  /// تحديث FCM Token
+  Future<void> updateFcmToken({
+    required String fcmToken,
+    required String token,
+  }) async {
+    await http.post(
+      Uri.parse('$baseUrl/api/update-fcm-token'),
+      headers: _headers(token),
+      body: jsonEncode({'fcm_token': fcmToken}),
+    );
   }
 }
