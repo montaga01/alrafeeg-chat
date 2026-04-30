@@ -1,53 +1,45 @@
 workflows:
-  shorebird-initial-setup:
-    name: Shorebird First Time Setup (App ID Generator)
+  shorebird-workflow:
+    name: Shorebird Android Build & Release
     max_build_duration: 60
+    instance_type: mac_mini_m1 # أو linux حسب توفر الباقة
     environment:
       groups:
-        - deployment # تأكد أن SHOREBIRD_TOKEN موجود في هذا الجروب في Codemagic
-      flutter: stable
-
+        - shorebird_credentials # تأكد من إضافة SHOREBIRD_TOKEN هنا في موقع Codemagic
+      vars:
+        FLUTTER_VERSION: "stable"
     scripts:
-      - name: Get Flutter packages
-        script: flutter pub get
-
-      - name: Install Shorebird CLI
+      - name: Install Shorebird
         script: |
-          # 1. تحميل وتثبيت Shorebird
-          curl --proto '=https' -fLsS https://raw.githubusercontent.com/shorebirdtech/install/main/install.sh -o /tmp/install_shorebird.sh
-          bash /tmp/install_shorebird.sh
-          
-          # 2. إضافة المسار لبيئة Codemagic بشكل صحيح
-          echo "$HOME/.shorebird/bin" >> $CM_EXPORT_PATH
-          
-          # 3. تفعيل المسار في السكربت الحالي للتأكد من الجاهزية
-          export PATH="$HOME/.shorebird/bin:$PATH"
-          shorebird --version
+          # تثبيت أداة Shorebird في بيئة Codemagic
+          curl https://install.shorebird.dev | bash
+          echo "export PATH=$HOME/.shorebird/bin:$PATH" >> $GITHUB_PATH
 
-      - name: Shorebird Init and Build
+      - name: Shorebird Login and Init
         script: |
-          # تفعيل المسار
           export PATH="$HOME/.shorebird/bin:$PATH"
           
-          # التحقق من وجود التوكن (إجباري)
+          # التأكد من وجود التوكن
           if [ -z "$SHOREBIRD_TOKEN" ]; then
-            echo "❌ خطأ: SHOREBIRD_TOKEN غير موجود في إعدادات Codemagic (Environment Variables)!"
+            echo "❌ SHOREBIRD_TOKEN is missing in Environment Variables!"
             exit 1
           fi
 
-          # 1. إنشاء التطبيق في حسابك تلقائياً
-          # هذا الأمر سينشئ ملف shorebird.yaml داخل حاوية البناء
-          shorebird init --non-interactive --token "$SHOREBIRD_TOKEN"
+          # تسجيل الدخول
+          shorebird login --auth-token "$SHOREBIRD_TOKEN"
+
+          # تهيئة المشروع (إذا كان موجوداً سيتخطى، وإذا لم يكن سيقوم بإنشائه)
+          # نستخدم --force لضمان الاستمرار
+          shorebird init --force
+
+      - name: Shorebird Build and Release
+        script: |
+          export PATH="$HOME/.shorebird/bin:$PATH"
           
-          # 2. طباعة محتوى الملف لرؤية الـ App ID في الـ Logs (مهم جداً لنسخه)
-          echo "------------------------------------------------"
-          echo "✅ تم إنشاء التطبيق بنجاح! انسخ المعرف التالي وضعه في ملفك يدوياً:"
-          cat shorebird.yaml
-          echo "------------------------------------------------"
-          
-          # 3. بناء أول نسخة (Release) ورفعها للسيرفر
-          # ملاحظة: هذه النسخة ضرورية جداً لتأسيس نظام التحديثات الهوائية
-          shorebird release android --flutter-version stable --token "$SHOREBIRD_TOKEN" --force
+          # بناء نسخة الـ APK ورفعها كـ Release أساسي
+          # ملاحظة: يمكنك تغيير apk إلى aab إذا كنت ترفع للمتجر
+          shorebird release android --artifact apk --flutter-version $FLUTTER_VERSION
 
     artifacts:
       - build/app/outputs/flutter-apk/*.apk
+      - shorebird.yaml # لحفظ نسخة من الملف الذي يحتوي على الـ App ID
