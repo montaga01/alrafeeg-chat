@@ -5,7 +5,7 @@ workflows:
     instance_type: mac_mini_m1 # أو linux حسب توفر الباقة
     environment:
       groups:
-        - shorebird_credentials # تأكد من إضافة SHOREBIRD_TOKEN هنا في موقع Codemagic
+        - deployment # تأكد من إضافة SHOREBIRD_TOKEN هنا في موقع Codemagic
       vars:
         FLUTTER_VERSION: "stable"
     scripts:
