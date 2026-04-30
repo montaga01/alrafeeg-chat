@@ -5,7 +5,7 @@ workflows:
     instance_type: mac_mini_m1
     environment:
       groups:
-        - shorebird_credentials # تأكد من وجود SHOREBIRD_TOKEN في هذه المجموعة
+        - deployment # تأكد من وجود SHOREBIRD_TOKEN في هذه المجموعة
       vars:
         FLUTTER_VERSION: "stable"
     
