@@ -13,33 +13,40 @@ workflows:
 
       - name: Install Shorebird CLI
         script: |
+          # 1. تحميل وتثبيت Shorebird
           curl --proto '=https' -fLsS https://raw.githubusercontent.com/shorebirdtech/install/main/install.sh -o /tmp/install_shorebird.sh
           bash /tmp/install_shorebird.sh
+          
+          # 2. إضافة المسار لبيئة Codemagic بشكل صحيح
+          echo "$HOME/.shorebird/bin" >> $CM_EXPORT_PATH
+          
+          # 3. تفعيل المسار في السكربت الحالي للتأكد من الجاهزية
           export PATH="$HOME/.shorebird/bin:$PATH"
-          echo "export PATH=$HOME/.shorebird/bin:$PATH" >> $BASH_ENV
+          shorebird --version
 
       - name: Shorebird Init and Build
         script: |
+          # تفعيل المسار
           export PATH="$HOME/.shorebird/bin:$PATH"
           
-          # التحقق من وجود التوكن
+          # التحقق من وجود التوكن (إجباري)
           if [ -z "$SHOREBIRD_TOKEN" ]; then
-            echo "❌ خطأ: SHOREBIRD_TOKEN غير موجود في إعدادات Codemagic!"
+            echo "❌ خطأ: SHOREBIRD_TOKEN غير موجود في إعدادات Codemagic (Environment Variables)!"
             exit 1
           fi
 
-          # 1. إنشاء التطبيق في لوحة تحكم Shorebird تلقائياً
-          # هذا الأمر سيقوم بإنشاء ملف shorebird.yaml داخل السيرفر
+          # 1. إنشاء التطبيق في حسابك تلقائياً
+          # هذا الأمر سينشئ ملف shorebird.yaml داخل حاوية البناء
           shorebird init --non-interactive --token "$SHOREBIRD_TOKEN"
           
-          # 2. طباعة محتوى الملف لرؤية الـ App ID في الـ Logs
-          echo "----------------------------------------"
-          echo "✅ تم إنشاء التطبيق بنجاح! هذا هو محتوى ملف shorebird.yaml الجديد:"
+          # 2. طباعة محتوى الملف لرؤية الـ App ID في الـ Logs (مهم جداً لنسخه)
+          echo "------------------------------------------------"
+          echo "✅ تم إنشاء التطبيق بنجاح! انسخ المعرف التالي وضعه في ملفك يدوياً:"
           cat shorebird.yaml
-          echo "----------------------------------------"
+          echo "------------------------------------------------"
           
           # 3. بناء أول نسخة (Release) ورفعها للسيرفر
-          # ملاحظة: أول نسخة يجب أن تكون Release ليتمكن الـ Patch من العمل لاحقاً
+          # ملاحظة: هذه النسخة ضرورية جداً لتأسيس نظام التحديثات الهوائية
           shorebird release android --flutter-version stable --token "$SHOREBIRD_TOKEN" --force
 
     artifacts:
