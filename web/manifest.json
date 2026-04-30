@@ -3,9 +3,9 @@
     "short_name": "الرفيق",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0D1117",
-    "theme_color": "#2F81F7",
-    "description": "منصة المحادثات الفورية",
+    "background_color": "#f0f4ff",
+    "theme_color": "#1a56db",
+    "description": "تطبيق الرفيق للدردشة",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

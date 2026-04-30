@@ -1,23 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
-import 'providers/providers.dart';
-import 'screens/auth_screen.dart';
-import 'screens/chats_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'core/storage.dart';
+import 'screens/login_screen.dart';
+import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
-
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-  ));
-
   runApp(const AlrafeegApp());
 }
 
@@ -26,55 +14,87 @@ class AlrafeegApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
-      ],
-      child: Consumer2<ThemeProvider, AuthProvider>(
-        builder: (context, themeProv, authProv, _) {
-          return MaterialApp(
-            title: 'الرفيق',
-            debugShowCheckedModeBanner: false,
-            theme: ThemeProvider.lightTheme,
-            darkTheme: ThemeProvider.darkTheme,
-            themeMode: themeProv.mode,
-            locale: const Locale('ar'),
-            supportedLocales: const [Locale('ar'), Locale('en')],
-            builder: (context, child) {
-              return Directionality(
-                textDirection: TextDirection.rtl,
-                child: child ?? const SizedBox.shrink(),
-              );
-            },
-            home: authProv.isInitializing    // ★ التغيير هنا
-                ? const _LoadingScreen()
-                : authProv.isAuthenticated
-                    ? const ChatsScreen()
-                    : const AuthScreen(),
-          );
-        },
+    return MaterialApp(
+      title: 'الرفيق',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primaryColor: const Color(0xFF1a56db),
+        scaffoldBackgroundColor: const Color(0xFFf0f4ff),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1a56db),
+          primary: const Color(0xFF1a56db),
+          secondary: const Color(0xFF1e429f),
+          surface: const Color(0xFFffffff),
+        ),
+        textTheme: GoogleFonts.tajawalTextTheme(
+          const TextTheme(
+            displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w800),
+            displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+            displaySmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+            headlineMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            headlineSmall: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            titleLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            titleMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
+            bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
+            bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+          ),
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFFffffff),
+          foregroundColor: Color(0xFF1a2340),
+          elevation: 0,
+          centerTitle: false,
+        ),
       ),
+      home: const _Splash(),
     );
   }
 }
 
-class _LoadingScreen extends StatelessWidget {
-  const _LoadingScreen();
+/// شاشة البداية: تتحقق من التوكن وتوجّه للشاشة الصحيحة
+class _Splash extends StatefulWidget {
+  const _Splash();
+
+  @override
+  State<_Splash> createState() => _SplashState();
+}
+
+class _SplashState extends State<_Splash> {
+  @override
+  void initState() {
+    super.initState();
+    _check();
+  }
+
+  Future<void> _check() async {
+    final token = await AppStorage.getToken();
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => token != null ? const HomeScreen() : const LoginScreen(),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFF0D1117),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('💬', style: TextStyle(fontSize: 48)),
-            SizedBox(height: 16),
-            CircularProgressIndicator(color: Color(0xFF2F81F7)),
-          ],
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [
+              Color(0xFF1a56db),
+              Color(0xFF1e429f),
+              Color(0xFF0f2a6e),
+            ],
+          ),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(color: Colors.white),
         ),
       ),
     );

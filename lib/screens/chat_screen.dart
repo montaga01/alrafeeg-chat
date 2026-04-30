@@ -1,12 +1,17 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/providers.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import '../core/storage.dart';
 import '../models/message.dart';
-import '../widgets/widgets.dart';
+import '../models/user.dart';
+import '../services/api_service.dart';
+import '../services/websocket_service.dart';
 
-/// شاشة المحادثة الفردية
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  final ChatUser otherUser;
+
+  const ChatScreen({super.key, required this.otherUser});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -15,260 +20,225 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _msgCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
-  bool _showScrollBtn = false;
-  DateTime? _lastTypingSent;
+  final _wsService = WebSocketService();
+
+  List<Message> _messages = [];
+  int _myId = 0;
+  bool _loading = true;
+  StreamSubscription? _wsSub;
 
   @override
   void initState() {
     super.initState();
-    _scrollCtrl.addListener(_onScroll);
+    _init();
+  }
+
+  Future<void> _init() async {
+    _myId = await AppStorage.getUserId() ?? 0;
+    final token = await AppStorage.getToken() ?? '';
+
+    // تحميل الرسائل القديمة
+    try {
+      final msgs = await ApiService.getMessages(widget.otherUser.id);
+      if (mounted) {
+        setState(() { _messages = msgs; _loading = false; });
+        _scrollToBottom();
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+
+    // الاتصال بـ WebSocket
+    _wsService.connect(token);
+    _wsSub = _wsService.messages.listen((msg) {
+      if (msg.senderId == widget.otherUser.id || msg.receiverId == widget.otherUser.id) {
+        if (mounted) {
+          setState(() => _messages.add(msg));
+          _scrollToBottom();
+        }
+      }
+    });
+  }
+
+  void _send() async {
+    final text = _msgCtrl.text.trim();
+    if (text.isEmpty) return;
+    _msgCtrl.clear();
+
+    // إضافة الرسالة محلياً فوراً
+    final tempMsg = Message(
+      id: DateTime.now().millisecondsSinceEpoch,
+      senderId: _myId,
+      receiverId: widget.otherUser.id,
+      content: text,
+      timestamp: DateTime.now(),
+    );
+    setState(() => _messages.add(tempMsg));
+    _scrollToBottom();
+
+    try {
+      _wsService.sendMessage(receiverId: widget.otherUser.id, content: text);
+    } catch (_) {
+      try {
+        await ApiService.sendMessage(receiverId: widget.otherUser.id, content: text);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('فشل الإرسال: $e')));
+        }
+      }
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.animateTo(
+          _scrollCtrl.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
+    _wsSub?.cancel();
+    _wsService.dispose();
     _msgCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
   }
 
-  void _onScroll() {
-    final show = _scrollCtrl.position.pixels <
-        _scrollCtrl.position.maxScrollExtent - 200;
-    if (show != _showScrollBtn) {
-      setState(() => _showScrollBtn = show);
-    }
-  }
-
-  void _scrollToBottom() {
-    if (_scrollCtrl.hasClients) {
-      _scrollCtrl.animateTo(
-        _scrollCtrl.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final chat = context.watch<ChatProvider>();
-    final currentChat = chat.currentChat;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (currentChat == null) {
-      return const SizedBox.shrink();
-    }
-
-    final messages = chat.messagesForChat(currentChat.userId);
-    final isTyping = chat.isUserTyping(currentChat.userId);
-    final isOnline = chat.isUserOnline(currentChat.userId);
-
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        // Header مخصص
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF161B22) : Colors.white,
-              border: Border(
-                bottom: BorderSide(
-                  color: isDark
-                      ? const Color(0xFF30363D)
-                      : const Color(0xFFD0D7DE),
-                ),
-              ),
-            ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  children: [
-                    // زر الرجوع
-                    IconButton(
-                      onPressed: () {
-                        chat.setCurrentChat(null);
-                        Navigator.pop(context);
-                      },
-                      icon: const Icon(Icons.arrow_back),
-                      tooltip: 'رجوع',
-                    ),
-                    const SizedBox(width: 4),
-
-                    // الأفاتار مع حالة الاتصال
-                    AvatarWidget(
-                      name: currentChat.name,
-                      size: 36,
-                      isOnline: isOnline,
-                    ),
-                    const SizedBox(width: 12),
-
-                    // الاسم والحالة
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            currentChat.name,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: isDark
-                                  ? const Color(0xFFE6EDF3)
-                                  : const Color(0xFF1F2328),
-                            ),
-                          ),
-                          // مؤشر الكتابة أو حالة الاتصال
-                          if (isTyping)
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _MiniTypingDots(),
-                                const SizedBox(width: 4),
-                                const Text(
-                                  'يكتب...',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF2F81F7),
-                                  ),
-                                ),
-                              ],
-                            )
-                          else
-                            Text(
-                              isOnline ? 'متصل' : 'آخر ظهور مؤخراً',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isOnline
-                                    ? const Color(0xFF3FB950)
-                                    : isDark
-                                        ? const Color(0xFF8B949E)
-                                        : const Color(0xFF656D76),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+    return Scaffold(
+      backgroundColor: const Color(0xFFf8faff),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_forward_ios, size: 20),
+          onPressed: () => Navigator.pop(context),
         ),
-
-        // الرسائل
-        body: Column(
+        title: Row(
           children: [
-            // قائمة الرسائل
-            Expanded(
-              child: chat.isLoadingMessages && messages.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
-                  : messages.isEmpty
-                      ? _buildEmptyChat(isDark)
-                      : Stack(
-                          children: [
-                            ListView.builder(
-                              controller: _scrollCtrl,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 12,
-                              ),
-                              itemCount: messages.length,
-                              itemBuilder: (ctx, i) {
-                                final msg = messages[i];
-                                final isMe = msg.senderId == chat.myId;
-
-                                // فاصل التاريخ
-                                String? dateLabel;
-                                bool showDate = false;
-                                if (i == 0) {
-                                  showDate = true;
-                                  dateLabel = _dayLabel(msg.timestamp);
-                                } else {
-                                  final prev = messages[i - 1];
-                                  if (!_sameDay(prev.timestamp, msg.timestamp)) {
-                                    showDate = true;
-                                    dateLabel = _dayLabel(msg.timestamp);
-                                  }
-                                }
-
-                                return MessageBubble(
-                                  message: msg,
-                                  isMe: isMe,
-                                  showDate: showDate,
-                                  dateLabel: dateLabel,
-                                  onRetry: msg.status == MessageStatus.failed
-                                      ? () => chat.retryMessage(
-                                            msg.receiverId == chat.myId
-                                                ? msg.senderId
-                                                : msg.receiverId,
-                                            msg.id,
-                                          )
-                                      : null,
-                                );
-                              },
-                            ),
-
-                            // زر التمرير للأسفل
-                            if (_showScrollBtn)
-                              Positioned(
-                                left: 16,
-                                bottom: 8,
-                                child: FloatingActionButton.small(
-                                  onPressed: _scrollToBottom,
-                                  backgroundColor: isDark
-                                      ? const Color(0xFF21262D)
-                                      : Colors.white,
-                                  child: Icon(
-                                    Icons.keyboard_arrow_down,
-                                    color: isDark
-                                        ? const Color(0xFF8B949E)
-                                        : const Color(0xFF656D76),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: const Color(0xFF1a56db).withOpacity(0.15),
+              child: Text(
+                widget.otherUser.name[0].toUpperCase(),
+                style: const TextStyle(
+                    color: Color(0xFF1a56db), fontWeight: FontWeight.bold),
+              ),
             ),
-
-            // مؤشر الكتابة
-            if (isTyping) const TypingIndicator(),
-
-            // منطقة الإدخال
-            _buildInputArea(chat, currentChat.userId, isDark),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.otherUser.name,
+                    style: GoogleFonts.tajawal(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: const Color(0xFF1a2340),
+                    )),
+                const Text(
+                  'متصل',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF22c55e)),
+                ),
+              ],
+            ),
           ],
         ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: const Color(0xFFe2e8f8), height: 1),
+        ),
       ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════
-  //  EMPTY CHAT STATE
-  // ═══════════════════════════════════════════════════
-  Widget _buildEmptyChat(bool isDark) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      body: Column(
         children: [
-          Text(
-            '👋',
-            style: TextStyle(
-              fontSize: 48,
-              color: isDark
-                  ? const Color(0xFF484F58)
-                  : const Color(0xFF8B949E),
-            ),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _messages.isEmpty
+                    ? Center(
+                        child: Text('ابدأ المحادثة!',
+                            style: GoogleFonts.tajawal(color: Colors.grey)))
+                    : ListView.builder(
+                        controller: _scrollCtrl,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        itemCount: _messages.length,
+                        itemBuilder: (_, i) {
+                          final msg = _messages[i];
+                          final isMe = msg.senderId == _myId;
+                          return _buildMessageBubble(msg, isMe);
+                        },
+                      ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            'ابدأ المحادثة!',
-            style: TextStyle(
-              fontSize: 14,
-              color: isDark
-                  ? const Color(0xFF484F58)
-                  : const Color(0xFF8B949E),
+
+          // حقل الإرسال
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: SafeArea(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _msgCtrl,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _send(),
+                      textAlign: TextAlign.right,
+                      decoration: InputDecoration(
+                        hintText: 'اكتب رسالة...',
+                        hintStyle: GoogleFonts.tajawal(color: const Color(0xFF94a3b8)),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: const BorderSide(color: Color(0xFFe2e8f8)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: const BorderSide(color: Color(0xFFe2e8f8)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF1a56db), width: 1.5),
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFf8faff),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: _send,
+                    borderRadius: BorderRadius.circular(50),
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF1a56db), Color(0xFF1e429f)],
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF1a56db).withOpacity(0.35),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(Icons.send_rounded,
+                          color: Colors.white, size: 22),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -276,195 +246,61 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ═══════════════════════════════════════════════════
-  //  INPUT AREA
-  // ═══════════════════════════════════════════════════
-  Widget _buildInputArea(ChatProvider chat, int receiverId, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF161B22) : Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: isDark ? const Color(0xFF30363D) : const Color(0xFFD0D7DE),
-          ),
+  Widget _buildMessageBubble(Message message, bool isMe) {
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.72,
         ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+        decoration: BoxDecoration(
+          gradient: isMe
+              ? const LinearGradient(
+                  colors: [Color(0xFF1a56db), Color(0xFF1e429f)],
+                )
+              : null,
+          color: isMe ? null : Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(18),
+            topRight: const Radius.circular(18),
+            bottomLeft: Radius.circular(isMe ? 18 : 4),
+            bottomRight: Radius.circular(isMe ? 4 : 18),
+          ),
+          border: isMe
+              ? null
+              : Border.all(color: const Color(0xFFe2e8f8)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            // حقل الإدخال
-            Expanded(
-              child: Container(
-                constraints: const BoxConstraints(maxHeight: 120),
-                child: TextField(
-                  controller: _msgCtrl,
-                  textDirection: TextDirection.rtl,
-                  maxLines: null,
-                  keyboardType: TextInputType.multiline,
-                  decoration: InputDecoration(
-                    hintText: 'اكتب رسالتك...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 11,
-                    ),
-                  ),
-                  onChanged: (_) {
-                    // إرسال مؤشر الكتابة
-                    final now = DateTime.now();
-                    if (_lastTypingSent == null ||
-                        now.difference(_lastTypingSent!).inSeconds >= 2) {
-                      _lastTypingSent = now;
-                      chat.sendTyping(receiverId);
-                    }
-                  },
-                ),
+            Text(
+              message.content,
+              style: TextStyle(
+                color: isMe ? Colors.white : const Color(0xFF1a2340),
+                fontSize: 15,
+                height: 1.6,
               ),
             ),
-            const SizedBox(width: 10),
-
-            // زر الإرسال
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF2F81F7), Color(0xFF1F6FEB)],
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF2F81F7).withValues(alpha: 0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(22),
-                  onTap: () => _sendMessage(chat, receiverId),
-                  child: const Center(
-                    child: Icon(
-                      Icons.send_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
+            const SizedBox(height: 4),
+            Text(
+              DateFormat('hh:mm a').format(message.timestamp.toLocal()),
+              style: TextStyle(
+                fontSize: 11,
+                color: isMe ? Colors.white60 : Colors.grey,
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════
-  //  SEND MESSAGE
-  // ═══════════════════════════════════════════════════
-  void _sendMessage(ChatProvider chat, int receiverId) {
-    final text = _msgCtrl.text.trim();
-    if (text.isEmpty) return;
-
-    _msgCtrl.clear();
-    chat.sendMessage(receiverId: receiverId, content: text);
-
-    // تمرير للأسفل
-    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
-  }
-
-  // ═══════════════════════════════════════════════════
-  //  DATE HELPERS
-  // ═══════════════════════════════════════════════════
-  bool _sameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
-
-  String _dayLabel(DateTime dt) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final day = DateTime(dt.year, dt.month, dt.day);
-
-    if (day == today) return 'اليوم';
-    if (day == today.subtract(const Duration(days: 1))) return 'أمس';
-    final diff = today.difference(day).inDays;
-    if (diff < 7) {
-      const days = [
-        'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس',
-        'الجمعة', 'السبت', 'الأحد'
-      ];
-      return days[dt.weekday - 1];
-    }
-    return '${dt.day} ${_monthName(dt.month)} ${dt.year}';
-  }
-
-  String _monthName(int m) {
-    const months = [
-      '', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
-    ];
-    return months[m];
-  }
-}
-
-/// أنيميشن صغير لمؤشر الكتابة في الـ Header
-class _MiniTypingDots extends StatefulWidget {
-  const _MiniTypingDots();
-
-  @override
-  State<_MiniTypingDots> createState() => _MiniTypingDotsState();
-}
-
-class _MiniTypingDotsState extends State<_MiniTypingDots>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(3, (i) {
-        return AnimatedBuilder(
-          animation: _ctrl,
-          builder: (_, __) {
-            final progress = (_ctrl.value + i * 0.15) % 1.0;
-            return Container(
-              width: 3,
-              height: 3,
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2F81F7)
-                    .withValues(alpha: 0.4 + 0.6 * progress),
-                shape: BoxShape.circle,
-              ),
-            );
-          },
-        );
-      }),
     );
   }
 }
