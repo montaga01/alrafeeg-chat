@@ -1,68 +1,46 @@
 workflows:
-  android-web-shorebird:
-    name: Build APK + Web with Shorebird OTA
+  shorebird-initial-setup:
+    name: Shorebird First Time Setup (App ID Generator)
     max_build_duration: 60
     environment:
       groups:
-        - deployment
+        - deployment # تأكد أن SHOREBIRD_TOKEN موجود في هذا الجروب في Codemagic
       flutter: stable
 
     scripts:
       - name: Get Flutter packages
         script: flutter pub get
 
-      # ========== تثبيت Shorebird ==========
       - name: Install Shorebird CLI
         script: |
           curl --proto '=https' -fLsS https://raw.githubusercontent.com/shorebirdtech/install/main/install.sh -o /tmp/install_shorebird.sh
           bash /tmp/install_shorebird.sh
           export PATH="$HOME/.shorebird/bin:$PATH"
           echo "export PATH=$HOME/.shorebird/bin:$PATH" >> $BASH_ENV
-          shorebird --version
 
-      # ========== بناء الويب ورفعه ==========
-      - name: Build Web
-        script: flutter build web --release
-
-      - name: Deploy Web to Server
-        script: |
-          cd build/web && zip -r ../../web-web.zip . && cd ../..
-
-          echo "$SSH_PRIVATE_KEY" | base64 --decode > /tmp/id_rsa
-          chmod 600 /tmp/id_rsa
-
-          scp -i /tmp/id_rsa -o StrictHostKeyChecking=no web-web.zip root@173.214.173.203:/root/
-
-          ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no root@173.214.173.203 << 'SERVER_EOF'
-            rm -rf ~/alrafeeg_api/test/*
-            mkdir -p ~/alrafeeg_api/temp_web/
-            unzip -o /root/web-web.zip -d ~/alrafeeg_api/temp_web/
-            cp -r ~/alrafeeg_api/temp_web/* ~/alrafeeg_api/test/
-            rm -rf ~/alrafeeg_api/temp_web/
-            mv /root/web-web.zip /root/web-web-$(date +%Y%m%d-%H%M%S).zip
-          SERVER_EOF
-
-          rm -f /tmp/id_rsa
-
-      # ========== Shorebird: ذكي (patch أو release تلقائياً) ==========
-      - name: Shorebird Build Android
+      - name: Shorebird Init and Build
         script: |
           export PATH="$HOME/.shorebird/bin:$PATH"
-
-          # قراءة app_id من shorebird.yaml
-          APP_ID=$(grep 'app_id:' shorebird.yaml | head -1 | sed 's/app_id: *//' | tr -d "'\"")
-          echo "App ID: $APP_ID"
-
-          # التحقق: هل يوجد release سابق؟
-          RELEASES=$(shorebird releases list --app-id "$APP_ID" 2>/dev/null)
-
-          if echo "$RELEASES" | tail -n +3 | grep -qE '\S'; then
-            echo "✅ يوجد release سابق → عمل PATCH"
-            shorebird patch android --flutter-version stable
-          else
-            echo "🆕 أول مرة → عمل RELEASE"
-            shorebird release android --flutter-version stable --target-platform android-arm64
+          
+          # التحقق من وجود التوكن
+          if [ -z "$SHOREBIRD_TOKEN" ]; then
+            echo "❌ خطأ: SHOREBIRD_TOKEN غير موجود في إعدادات Codemagic!"
+            exit 1
           fi
 
+          # 1. إنشاء التطبيق في لوحة تحكم Shorebird تلقائياً
+          # هذا الأمر سيقوم بإنشاء ملف shorebird.yaml داخل السيرفر
+          shorebird init --non-interactive --token "$SHOREBIRD_TOKEN"
+          
+          # 2. طباعة محتوى الملف لرؤية الـ App ID في الـ Logs
+          echo "----------------------------------------"
+          echo "✅ تم إنشاء التطبيق بنجاح! هذا هو محتوى ملف shorebird.yaml الجديد:"
+          cat shorebird.yaml
+          echo "----------------------------------------"
+          
+          # 3. بناء أول نسخة (Release) ورفعها للسيرفر
+          # ملاحظة: أول نسخة يجب أن تكون Release ليتمكن الـ Patch من العمل لاحقاً
+          shorebird release android --flutter-version stable --token "$SHOREBIRD_TOKEN" --force
+
     artifacts:
-      - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/flutter-apk/*.apk
