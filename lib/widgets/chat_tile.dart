@@ -20,13 +20,16 @@ class ChatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final dt = DateTime.tryParse(timestamp)?.toLocal();
     final timeStr = dt != null ? DateFormat('hh:mm a').format(dt) : '';
-
+  
     return InkWell(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
+          // تجعل العناصر تبدأ من اليمين (في حالة الـ RTL)
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // 1. الدائرة الشخصية (تبقي في اليمين)
             CircleAvatar(
               radius: 26,
               backgroundColor: const Color(0xFF1a56db).withOpacity(0.15),
@@ -40,9 +43,11 @@ class ChatTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
+  
+            // 2. العمود الذي يحتوي على الاسم والرسالة (يتمدد ليأخذ كل المساحة المتاحة)
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start, // محاذاة النص لليمين (بداية العمود)
                 children: [
                   Text(name,
                       style: GoogleFonts.tajawal(
@@ -63,11 +68,18 @@ class ChatTile extends StatelessWidget {
                 ],
               ),
             ),
-            Text(timeStr,
+  
+            // 3. الوقت (سيدفع تلقائياً لأقصى الشمال بفضل Expanded في العنصر السابق)
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0), // مسافة بسيطة بين النص والوقت
+              child: Text(
+                timeStr,
                 style: GoogleFonts.tajawal(
                   color: Colors.grey,
                   fontSize: 12,
-                )),
+                ),
+              ),
+            ),
           ],
         ),
       ),
