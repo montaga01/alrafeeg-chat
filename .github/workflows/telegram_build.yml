@@ -1,11 +1,14 @@
 name: Shorebird APK to Telegram
 
-
 on:
   push:
     branches:
       - main
   workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
 
 jobs:
   build_and_send:
@@ -29,49 +32,34 @@ jobs:
       - name: 📦 install dependencies
         run: flutter pub get
 
-      # بناء ورفع النسخة للمنصة مع تخطي أسئلة التأكيد
       - name: 🏗️ build and upload shorebird release
         run: |
-          yes | shorebird release android --artifact apk || echo "⚠️ واصل رغم التنبيهات"
+          yes | shorebird release android --artifact apk || echo "⚠️ واصل"
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      # حفظ الملف في Artifacts داخل قيت هاب للرجوع إليه لاحقاً
       - name: 📦 upload artifact to github
+        if: always() # عشان يرفع حتى لو الخطوات الفاتت فيها تنبيهات
         uses: actions/upload-artifact@v4
         with:
           name: Alrafeeg-Builds
           path: build/app/outputs/flutter-apk/*.apk
           retention-days: 7
 
-      # تجهيز الاسم وإرسال النسخة لتلجرام
       - name: 📤 send to telegram
+        if: success()
         run: |
-          echo "🔍 جاري تجهيز النسخة لتلجرام..."
-          
-          # استخراج رقم الإصدار للتميز بين النسخ
           VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
-          
-          # البحث عن الملف وتغيير اسمه
           APK_ORIGINAL=$(find . -name "*.apk" | grep -v "unsigned" | head -n 1)
-          
-          if [ -z "$APK_ORIGINAL" ]; then
-            echo "❌ لم يتم العثور على ملف APK"
-            exit 1
+          if [ -n "$APK_ORIGINAL" ]; then
+            NEW_NAME="Alrafeeg_v${VERSION}.apk"
+            cp "$APK_ORIGINAL" "$NEW_NAME"
+            curl -F document=@"$NEW_NAME" \
+                 -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+                 -F caption="🚀 نسخة الرفيق v$VERSION" \
+                 https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
           fi
-          
-          NEW_NAME="Alrafeeg_v${VERSION}.apk"
-          cp "$APK_ORIGINAL" "$NEW_NAME"
-          
-          echo "✅ تم تجهيز الملف: $NEW_NAME"
-          
-          curl -v -F document=@"$NEW_NAME" \
-               -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-               -F caption="🚀 نسخة الرفيق الجديدة جاهزة!
-               
-📦 الإصدار: $VERSION
-✨ تدعم التحديث الهوائي (Shorebird)" \
-               https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
