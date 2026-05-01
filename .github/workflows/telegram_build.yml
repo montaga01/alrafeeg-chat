@@ -37,7 +37,7 @@ jobs:
         run: |
           # هنا بنعمل Release حقيقي عشان النسخة تظهر في Shorebird Console
           # استخدمنا --yes لتخطي رسائل التأكيد و || true كأمان إضافي
-          shorebird release android --artifact apk --yes || echo "⚠️ النسخة موجودة مسبقاً، سأقوم بإرسال الـ APK المبني حالياً"
+          shorebird release android --artifact apk --force || echo "⚠️ النسخة موجودة مسبقاً، سأقوم بإرسال الـ APK المبني حالياً"
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
