@@ -62,17 +62,19 @@ workflows:
         script: |
           export PATH="$HOME/.shorebird/bin:$PATH"
           
+          # قراءة app_id من shorebird.yaml
           APP_ID=$(grep 'app_id:' shorebird.yaml | head -1 | sed 's/app_id: *//' | tr -d "'\"")
           echo "App ID: $APP_ID"
 
+          # التحقق: هل يوجد release سابق على Shorebird؟
           RELEASES=$(shorebird releases list --app-id "$APP_ID" 2>/dev/null)
 
           if echo "$RELEASES" | tail -n +3 | grep -qE '\S'; then
             echo "✅ يوجد release سابق → عمل PATCH"
-            shorebird patch android --flutter-version stable
+            shorebird patch android
           else
             echo "🆕 أول مرة → عمل RELEASE"
-            shorebird release android --flutter-version stable --target-platform android-arm64
+            shorebird release android
           fi
 
     artifacts:
