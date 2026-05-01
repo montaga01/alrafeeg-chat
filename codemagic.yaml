@@ -51,22 +51,22 @@ workflows:
         script: |
           export PATH="$HOME/.shorebird/bin:$PATH"
           
-          # أولاً: نقوم ببناء الـ APK المتوافق مع Shorebird يدوياً لضمان وجوده في الأرتيفاكتس
-          # هذا الأمر يضمن أن الـ APK الناتج يدعم التحديثات الهوائية
+          # بناء الـ APK المتوافق مع Shorebird
           shorebird build apk
 
-          # ثانياً: محاولة عمل Patch
+          # تأمين نسخة الـ APK في مجلد معروف
+          mkdir -p build/outputs
+          cp build/app/outputs/flutter-apk/app-release.apk build/outputs/alrafeeg-latest.apk
+
           echo "جاري محاولة عمل PATCH..."
           if shorebird patch android; then
             echo "✅ تم عمل PATCH بنجاح"
           else
-            echo "🆕 فشل الـ Patch، جاري عمل RELEASE..."
-            # نستخدم release android لرفع النسخة الأساسية للسيرفر
+            echo "🆕 جاري عمل RELEASE..."
             shorebird release android --artifact apk
           fi
 
     artifacts:
-      # هذا المسار سيبحث عن أي ملف apk في مجلد build ويرفعه
-      - build/app/outputs/flutter-apk/*.apk
+      - build/outputs/*.apk        # المسار الجديد الذي نسخنا فيه الملف
       - build/app/outputs/bundle/release/*.aab
       - web-web.zip
