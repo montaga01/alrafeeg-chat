@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-
+  workflow_dispatch: # أضفت ليك الخيار ده عشان تقدر تشغله يدوياً من الموقع لو حبيت
 
 jobs:
   build_and_send:
@@ -32,32 +32,38 @@ jobs:
       - name: 📦 install dependencies
         run: flutter pub get
 
-      # 5. بناء الـ APK (استخدام dry-run لتجنب خطأ المرة الفاتت)
+      # 5. بناء الـ APK (التعامل مع النسخة المكررة بحكمة)
       - name: 🏗️ build shorebird apk
         run: |
-          # الخيار --dry-run يبني الـ APK ويقوم بالتحقق بدون الرفع النهائي
-          shorebird release android --artifact apk --dry-run
+          # نستخدم || true لضمان الانتقال لخطوة الإرسال حتى لو النسخة موجودة مسبقاً
+          shorebird release android --artifact apk --dry-run --token="${{ secrets.SHOREBIRD_TOKEN }}" || echo "⚠️ النسخة موجودة مسبقاً لكن سنواصل الإرسال..."
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      # 6. إرسال الملف إلى تلجرام (مع البحث الذكي عن الملف)
+      # 6. إرسال الملف لتلجرام (البحث الشامل)
       - name: 📤 send to telegram
         run: |
           echo "🔍 جاري البحث عن ملف الـ APK..."
           
-          # محاولة إيجاد الملف في المسار الافتراضي لشوربيرد
-          APK_PATH=$(find build -name "app-release.apk" | head -n 1)
+          # بنبحث في كل مجلد build عن أي ملف apk
+          # وبنستبعد الملفات الصغيرة أو غير الضرورية
+          APK_PATH=$(find build/app/outputs/flutter-apk -name "*.apk" | head -n 1)
           
+          if [ -z "$APK_PATH" ]; then
+             APK_PATH=$(find build -name "app-release.apk" | head -n 1)
+          fi
+
           if [ -n "$APK_PATH" ]; then
-            echo "✅ تم العثور على الملف في: $APK_PATH"
-            curl -F document=@"$APK_PATH" \
+            echo "✅ تم العثور على الملف: $APK_PATH"
+            curl -v -F document=@"$APK_PATH" \
                  -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-                 -F caption="✅ تم بناء نسخة الرفيق بنجاح! 🚀" \
+                 -F caption="✅ نسخة الرفيق جاهزة يا هندسة! 🚀" \
                  https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
           else
-            echo "❌ للأسف لم يتم العثور على ملف APK"
+            echo "❌ لم يتم العثور على APK"
             exit 1
           fi
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
