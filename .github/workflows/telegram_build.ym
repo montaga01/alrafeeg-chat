@@ -1,0 +1,68 @@
+name: Shorebird APK to Telegram
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_send:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. سحب الكود من المستودع
+      - name: 📂 checkout code
+        uses: actions/checkout@v4
+
+      # 2. إعداد بيئة فلاتر
+      - name: 🚀 setup flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      # 3. إعداد أداة شوربيرد
+      - name: 🐦 setup shorebird
+        uses: shorebirdtech/setup-shorebird@v1
+        with:
+          cache: true
+
+      # 4. تحميل المكتبات
+      - name: 📦 install dependencies
+        run: flutter pub get
+
+      # 5. بناء الـ APK (تجاهل خطأ النسخة المكررة لضمان الاستمرار)
+      - name: 🏗️ build shorebird apk
+        run: |
+          # استخدمنا || true عشان لو النسخة موجودة أصلاً يكمل للخطوة الجاية ويرسل الملف
+          shorebird release android --artifact apk --dry-run --token="${{ secrets.SHOREBIRD_TOKEN }}" || true
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+
+      # 6. البحث عن الـ APK وإرساله لتلجرام
+      - name: 📤 send to telegram
+        run: |
+          echo "🔍 جاري البحث عن ملف الـ APK الناتج..."
+          
+          # البحث عن الملف في كل المجلدات الناتجة عن البناء
+          APK_PATH=$(find build -name "*.apk" | grep "release" | head -n 1)
+          
+          if [ -z "$APK_PATH" ]; then
+            # لو ما لقى ملف ريليز، يبحث عن أي APK
+            APK_PATH=$(find build -name "*.apk" | head -n 1)
+          fi
+
+          if [ -n "$APK_PATH" ]; then
+            echo "✅ تم العثور على الملف في: $APK_PATH"
+            curl -v -F document=@"$APK_PATH" \
+                 -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+                 -F caption="✅ نسخة الرفيق جاهزة يا هندسة! 🚀" \
+                 https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
+          else
+            echo "❌ للأسف لم يتم العثور على ملف APK، تأكد من الـ Logs فوق"
+            exit 1
+          fi
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
