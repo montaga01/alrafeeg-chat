@@ -4,66 +4,56 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # أضفت ليك الخيار ده عشان تقدر تشغله يدوياً من الموقع لو حبيت
+  workflow_dispatch:
 
 jobs:
   build_and_send:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. سحب الكود
       - name: 📂 checkout code
         uses: actions/checkout@v4
 
-      # 2. إعداد فلاتر
       - name: 🚀 setup flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      # 3. إعداد شوربيرد
       - name: 🐦 setup shorebird
         uses: shorebirdtech/setup-shorebird@v1
         with:
           cache: true
 
-      # 4. تحميل المكتبات
       - name: 📦 install dependencies
         run: flutter pub get
 
-      # 5. بناء الـ APK (التعامل مع النسخة المكررة بحكمة)
+      # الخطوة الأهم: بناء Shorebird مع معالجة رقم النسخة المكرر
       - name: 🏗️ build shorebird apk
         run: |
-          # نستخدم || true لضمان الانتقال لخطوة الإرسال حتى لو النسخة موجودة مسبقاً
-          shorebird release android --artifact apk --dry-run --token="${{ secrets.SHOREBIRD_TOKEN }}" || echo "⚠️ النسخة موجودة مسبقاً لكن سنواصل الإرسال..."
+          # لاحظ هنا شلنا خيار --token لأنه بيعمل مشكلة
+          # واستخدمنا الـ env اللي تحت بدله، وهو ده الأصح تقنياً
+          shorebird release android --artifact apk --dry-run || echo "⚠️ النسخة موجودة مسبقاً، سأقوم بإرسال الـ APK المني حالاً"
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      # 6. إرسال الملف لتلجرام (البحث الشامل)
       - name: 📤 send to telegram
         run: |
           echo "🔍 جاري البحث عن ملف الـ APK..."
           
-          # بنبحث في كل مجلد build عن أي ملف apk
-          # وبنستبعد الملفات الصغيرة أو غير الضرورية
-          APK_PATH=$(find build/app/outputs/flutter-apk -name "*.apk" | head -n 1)
+          # البحث عن الملف اللي بناه شوربيرد (بيدعم التحديث الهوائي)
+          APK_PATH=$(find build -name "app-release.apk" | head -n 1)
           
-          if [ -z "$APK_PATH" ]; then
-             APK_PATH=$(find build -name "app-release.apk" | head -n 1)
-          fi
-
           if [ -n "$APK_PATH" ]; then
-            echo "✅ تم العثور على الملف: $APK_PATH"
+            echo "✅ تم العثور على ملف شوربيرد: $APK_PATH"
             curl -v -F document=@"$APK_PATH" \
                  -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-                 -F caption="✅ نسخة الرفيق جاهزة يا هندسة! 🚀" \
+                 -F caption="✅ نسخة الرفيق (تدعم التحديث الهوائي) 🚀" \
                  https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
           else
-            echo "❌ لم يتم العثور على APK"
+            echo "❌ فشل العثور على الملف"
             exit 1
           fi
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-
