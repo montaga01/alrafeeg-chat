@@ -62,18 +62,12 @@ workflows:
         script: |
           export PATH="$HOME/.shorebird/bin:$PATH"
           
-          # قراءة app_id من shorebird.yaml
-          APP_ID=$(grep 'app_id:' shorebird.yaml | head -1 | sed 's/app_id: *//' | tr -d "'\"")
-          echo "App ID: $APP_ID"
-
-          # التحقق: هل يوجد release سابق على Shorebird؟
-          RELEASES=$(shorebird releases list --app-id "$APP_ID" 2>/dev/null)
-
-          if echo "$RELEASES" | tail -n +3 | grep -qE '\S'; then
-            echo "✅ يوجد release سابق → عمل PATCH"
-            shorebird patch android
+          echo "جاري تجربة عمل PATCH..."
+          # نحاول نعمل Patch للإصدار الأخير، لو فشل (لأنه أول مرة) بينفذ الـ release
+          if shorebird patch android --release-version=latest; then
+            echo "✅ تم عمل PATCH بنجاح (تحديث خفيف)"
           else
-            echo "🆕 أول مرة → عمل RELEASE"
+            echo "🆕 فشل الـ Patch (طبيعي لو أول مرة)، جاري عمل RELEASE..."
             shorebird release android
           fi
 
