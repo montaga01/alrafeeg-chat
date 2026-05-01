@@ -72,5 +72,6 @@ workflows:
           fi
 
     artifacts:
-      - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/bundle/release/app-release.aab
+      - build/app/outputs/flutter-apk/**
       - build/web/**
