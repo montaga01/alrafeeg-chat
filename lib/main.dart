@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
         backgroundColor: Colors.white,
         body: Center(
           child: Text(
-            'مرحبا',
+            'الحمد لله',
             style: const TextStyle(
               fontSize: 52,
               fontWeight: FontWeight.bold,
