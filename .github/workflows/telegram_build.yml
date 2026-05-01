@@ -1,4 +1,4 @@
-name: Shorebird APK to Telegram
+name: Shorebird Push Patch
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   actions: write
 
 jobs:
-  build_and_send:
+  patch:
     runs-on: ubuntu-latest
 
     steps:
@@ -32,34 +32,25 @@ jobs:
       - name: 📦 install dependencies
         run: flutter pub get
 
-      - name: 🏗️ build and upload shorebird release
+      # الخطوة الجوهرية: رفع التحديث الهوائي
+      - name: 🚀 push shorebird patch
         run: |
-          yes | shorebird release android --artifact apk || echo "⚠️ واصل"
+          # نستخدم yes | للموافقة التلقائية على رفع التحديث
+          # أمر patch بيرفع التعديلات فقط لآخر نسخة (Release) مرفوعة بنفس رقم الإصدار
+          yes | shorebird patch android --force || echo "⚠️ فشل إرسال الباتش، تأكد أنك رفعت Release بنفس رقم الإصدار أولاً"
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      - name: 📦 upload artifact to github
-        if: always() # عشان يرفع حتى لو الخطوات الفاتت فيها تنبيهات
-        uses: actions/upload-artifact@v4
-        with:
-          name: Alrafeeg-Builds
-          path: build/app/outputs/flutter-apk/*.apk
-          retention-days: 7
-
-      - name: 📤 send to telegram
+      - name: 📢 notify telegram
         if: success()
         run: |
           VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
-          APK_ORIGINAL=$(find . -name "*.apk" | grep -v "unsigned" | head -n 1)
-          if [ -n "$APK_ORIGINAL" ]; then
-            NEW_NAME="Alrafeeg_v${VERSION}.apk"
-            cp "$APK_ORIGINAL" "$NEW_NAME"
-            curl -F document=@"$NEW_NAME" \
-                 -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-                 -F caption="🚀 نسخة الرفيق v$VERSION" \
-                 https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
-          fi
+          curl -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+               -F text="🚀 تم إرسال تحديث هوائي (Patch) جديد بنجاح!
+               
+📦 النسخة المستهدفة: $VERSION
+✨ التعديلات ستظهر للمستخدمين عند إعادة تشغيل التطبيق." \
+               https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-
