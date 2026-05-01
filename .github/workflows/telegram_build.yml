@@ -1,4 +1,4 @@
-name: Shorebird Push Patch
+name: Shorebird Patch
 
 on:
   push:
@@ -11,50 +11,34 @@ permissions:
   actions: write
 
 jobs:
-  patch_and_notify:
+  patch_process:
     runs-on: ubuntu-latest
-
     steps:
-      # 1. سحب الكود
-      - name: 📂 checkout code
+      - name: 📂 Checkout
         uses: actions/checkout@v4
 
-      # 2. إعداد فلاتر
-      - name: 🚀 setup flutter
+      - name: 🚀 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          cache: true
 
-      # 3. إعداد شوربيرد
-      - name: 🐦 setup shorebird
+      - name: 🐦 Setup Shorebird
         uses: shorebirdtech/setup-shorebird@v1
-        with:
-          cache: true
 
-      # 4. تحميل المكتبات
-      - name: 📦 install dependencies
+      - name: 📦 Install
         run: flutter pub get
 
-      # 5. رفع الباتش (التحديث الهوائي)
-      - name: 🚀 push shorebird patch
+      - name: 🚀 Run Patch
         run: |
-          # نستخدم yes | للموافقة التلقائية
-          # نستخدم --release-version=latest لربط التحديث بآخر نسخة موجودة في المنصة
           yes | shorebird patch android --release-version=latest
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      # 6. إشعار تلجرام (بدون APK لأن الباتش هوائي)
-      - name: 📢 notify telegram
+      - name: 📢 Telegram
         if: success()
         run: |
-          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
           curl -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-               -F text="✅ تم رفع تحديث هوائي (Patch) جديد بنجاح!
-               
-📦 الإصدار المستهدف: $VERSION
-✨ التعديلات ستظهر للمستخدمين عند إغلاق التطبيق وفتحه مجدداً." \
+               -F text="✅ تم رفع الباتش بنجاح!" \
                https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
