@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+7import 'package:flutter/material.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
         backgroundColor: Colors.white,
         body: Center(
           child: Text(
-            'بسم الله الرحمن الرحيم',
+            'بسم الله',
             style: const TextStyle(
               fontSize: 52,
               fontWeight: FontWeight.bold,
