@@ -11,52 +11,47 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. سحب الكود من المستودع
       - name: 📂 checkout code
         uses: actions/checkout@v4
 
-      # 2. إعداد بيئة فلاتر
       - name: 🚀 setup flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      # 3. إعداد أداة شوربيرد
       - name: 🐦 setup shorebird
         uses: shorebirdtech/setup-shorebird@v1
         with:
           cache: true
 
-      # 4. تحميل المكتبات
       - name: 📦 install dependencies
         run: flutter pub get
 
-      # 5. بناء الـ APK والرفع الفعلي للمنصة (لدعم التحديث الهوائي)
+      # 5. بناء الرفع الفعلي باستخدام تقنية yes لتخطي التأكيدات
       - name: 🏗️ build and upload shorebird release
         run: |
-          # هنا بنعمل Release حقيقي عشان النسخة تظهر في Shorebird Console
-          # استخدمنا --yes لتخطي رسائل التأكيد و || true كأمان إضافي
-          shorebird release android --artifact apk --force || echo "⚠️ النسخة موجودة مسبقاً، سأقوم بإرسال الـ APK المبني حالياً"
+          # نستخدم yes | لمحاكاة ضغط حرف y لكل أسئلة شوربيرد (مثل التأكيد على الرفع)
+          yes | shorebird release android --artifact apk || echo "⚠️ حدث تنبيه لكن سنحاول المواصلة"
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
       # 6. البحث عن الـ APK وإرساله لتلجرام
       - name: 📤 send to telegram
         run: |
-          echo "🔍 جاري البحث عن ملف الـ APK الناتج..."
+          echo "🔍 جاري البحث الشامل عن ملف الـ APK..."
           
-          # البحث عن ملف الـ release اللي بيدعم التحديث الهوائي
-          APK_PATH=$(find build -name "app-release.apk" | head -n 1)
+          # بحث عميق في كل المجلدات عن أي ملف APK تم إنتاجه
+          APK_PATH=$(find . -name "*.apk" | grep -v "unsigned" | head -n 1)
           
           if [ -n "$APK_PATH" ]; then
             echo "✅ تم العثور على الملف: $APK_PATH"
             curl -v -F document=@"$APK_PATH" \
                  -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-                 -F caption="✅ نسخة الرفيق (دعم كامل للتحديث الهوائي) 🚀" \
+                 -F caption="✅ نسخة الرفيق (جاهزة للتحديث الهوائي) 🚀" \
                  https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
           else
-            echo "❌ لم يتم العثور على ملف APK"
+            echo "❌ للأسف لم يتم بناء ملف APK، راجع Logs خطوة البناء"
             exit 1
           fi
         env:
