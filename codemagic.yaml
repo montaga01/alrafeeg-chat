@@ -1,10 +1,13 @@
 workflows:
-  android-web-shorebird:
-    name: Build Web + Shorebird Android OTA
-    max_build_duration: 60
+  android-telegram-upload:
+    name: Build APK and Send to Telegram
+    max_build_duration: 30
     environment:
       groups:
-        - deployment
+        - deployment # تأكد أن التوكنات موجودة في هذه المجموعة
+      vars:
+        TELEGRAM_BOT_TOKEN: "أدخل_توكن_البوت_هنا"
+        TELEGRAM_CHAT_ID: "أدخل_أيدي_الدردشة_هنا"
       flutter: stable
 
     cache:
@@ -15,27 +18,6 @@ workflows:
       - name: Get Flutter packages
         script: flutter pub get
 
-      # ========== 1. بناء الويب ورفعه ==========
-      - name: Build Web
-        script: flutter build web --release
-
-      - name: Deploy Web to Server
-        script: |
-          cd build/web && zip -r ../../web-web.zip . && cd ../..
-          echo "$SSH_PRIVATE_KEY" | base64 --decode > /tmp/id_rsa
-          chmod 600 /tmp/id_rsa
-          scp -i /tmp/id_rsa -o StrictHostKeyChecking=no web-web.zip root@173.214.173.203:/root/
-          ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no root@173.214.173.203 << 'SERVER_EOF'
-            rm -rf ~/alrafeeg_api/test/*
-            mkdir -p ~/alrafeeg_api/temp_web/
-            unzip -o /root/web-web.zip -d ~/alrafeeg_api/temp_web/
-            cp -r ~/alrafeeg_api/temp_web/* ~/alrafeeg_api/test/
-            rm -rf ~/alrafeeg_api/temp_web/
-            mv /root/web-web.zip /root/web-web-$(date +%Y%m%d-%H%M%S).zip
-          SERVER_EOF
-          rm -f /tmp/id_rsa
-
-      # ========== 2. إعداد Shorebird ==========
       - name: Setup Shorebird CLI
         script: |
           export PATH="$HOME/.shorebird/bin:$PATH"
@@ -44,31 +26,27 @@ workflows:
             curl --proto '=https' -fLsS https://raw.githubusercontent.com/shorebirdtech/install/main/install.sh -o /tmp/install_shorebird.sh
             bash /tmp/install_shorebird.sh
           fi
-          shorebird --version
 
-      # ========== 3. بناء الأندرويد (النسخة المتوافقة مع OTA) ==========
-      - name: Shorebird Build Android
+      - name: Shorebird Build APK
         script: |
           export PATH="$HOME/.shorebird/bin:$PATH"
+          # بناء الـ APK المتوافق مع التحديثات الهوائية
+          shorebird build apk
           
-          # 1. بناء الـ APK باستخدام صيغة الـ Proxy لضمان قبول الأمر
-          echo "🔨 جاري بناء الـ APK..."
-          shorebird build apk -- --release
+          # إرسال الملف إلى تليجرام فوراً
+          APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
+          
+          echo "🚀 جاري إرسال الـ APK إلى تليجرام..."
+          curl -F document=@"$APK_PATH" \
+               -F chat_id="$TELEGRAM_CHAT_ID" \
+               -F caption="✅ تم بناء نسخة الرفيق الجديدة بنجاح! 🚀" \
+               https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendDocument
 
-          # 2. نسخ الملف فوراً قبل أن يقوم أمر الـ Patch بأي عمليات تنظيف
-          mkdir -p build/outputs/apk
-          if [ -f build/app/outputs/flutter-apk/app-release.apk ]; then
-            cp build/app/outputs/flutter-apk/app-release.apk build/outputs/apk/alrafeeg-app.apk
-            echo "✅ تم تجهيز ملف الـ APK بنجاح"
-          else
-            echo "❌ فشل العثور على ملف الـ APK"
-          fi
-
-          # 3. تنفيذ الـ Patch
-          echo "🔄 جاري معالجة التحديث الهوائي..."
-          shorebird patch android --release-version=latest
+      - name: Shorebird Patch (Optional)
+        script: |
+          export PATH="$HOME/.shorebird/bin:$PATH"
+          # إذا أردت تحديث النسخ الموجودة عند المستخدمين حالياً
+          shorebird patch android --release-version=latest || echo "تخطي الباتش"
 
     artifacts:
-      - build/outputs/apk/alrafeeg-app.apk
-      - build/app/outputs/bundle/release/app-release.aab
-      - web-web.zip
+      - build/app/outputs/flutter-apk/*.apk
