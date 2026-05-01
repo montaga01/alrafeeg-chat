@@ -1,4 +1,4 @@
-name: Shorebird Patch
+name: Shorebird Push Patch
 
 on:
   push:
@@ -11,38 +11,51 @@ permissions:
   actions: write
 
 jobs:
-  patch_job:
+  patch_and_notify:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      # 1. سحب الكود
+      - name: 📂 checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Flutter
+      # 2. إعداد فلاتر
+      - name: 🚀 setup flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          cache: true
 
-      - name: Setup Shorebird
+      # 3. إعداد شوربيرد
+      - name: 🐦 setup shorebird
         uses: shorebirdtech/setup-shorebird@v1
+        with:
+          cache: true
 
-      - name: Get Packages
+      # 4. تحميل المكتبات
+      - name: 📦 install dependencies
         run: flutter pub get
 
-      - name: Run Patch
+      # 5. رفع الباتش (التحديث الهوائي)
+      - name: 🚀 push shorebird patch
         run: |
-          yes | shorebird patch android --force || echo "⚠️ Warning ignored"
+          # نستخدم yes | للموافقة التلقائية
+          # نستخدم --release-version=latest لربط التحديث بآخر نسخة موجودة في المنصة
+          yes | shorebird patch android --release-version=latest
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      - name: Send Telegram
+      # 6. إشعار تلجرام (بدون APK لأن الباتش هوائي)
+      - name: 📢 notify telegram
+        if: success()
         run: |
-          APK_PATH=$(find . -name "*.apk" | grep -v "unsigned" | head -n 1)
-          if [ -n "$APK_PATH" ]; then
-            curl -F document=@"$APK_PATH" \
-                 -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-                 -F caption="🚀 New Patch Sent!" \
-                 https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
-          fi
+          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+          curl -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+               -F text="✅ تم رفع تحديث هوائي (Patch) جديد بنجاح!
+               
+📦 الإصدار المستهدف: $VERSION
+✨ التعديلات ستظهر للمستخدمين عند إغلاق التطبيق وفتحه مجدداً." \
+               https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
