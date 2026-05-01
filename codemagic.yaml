@@ -66,7 +66,7 @@ workflows:
           fi
 
     artifacts:
-      # المسار الصحيح للـ APK الناتج من بناء شوربيرد
-      - build/app/outputs/bundle/release/app-release.aab
-      - build/app/outputs/flutter-apk/app-release.apk
+      # هذا المسار سيبحث عن أي ملف apk في مجلد build ويرفعه
+      - build/app/outputs/flutter-apk/*.apk
+      - build/app/outputs/bundle/release/*.aab
       - web-web.zip
