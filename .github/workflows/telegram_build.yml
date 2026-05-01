@@ -1,0 +1,41 @@
+name: Shorebird APK to Telegram
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+
+      - name: 🚀 setup flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: 🐦 setup shorebird
+        uses: shorebirdtech/setup-shorebird@v1
+        with:
+          cache: true
+
+      - name: 📦 install dependencies
+        run: flutter pub get
+
+      - name: 🏗️ build shorebird apk
+        run: |
+          shorebird release android --artifact apk --no-publish
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+
+      - name: 📤 send to telegram
+        run: |
+          APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
+          curl -F document=@"$APK_PATH" \
+               -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+               -F caption="✅ نسخة الرفيق جاهزة يا هندسة! 🚀" \
+               https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
