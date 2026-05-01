@@ -1,4 +1,4 @@
-name: Shorebird Push Patch
+name: Shorebird Patch
 
 on:
   push:
@@ -11,46 +11,38 @@ permissions:
   actions: write
 
 jobs:
-  patch:
+  patch_job:
     runs-on: ubuntu-latest
-
     steps:
-      - name: 📂 checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 🚀 setup flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          cache: true
 
-      - name: 🐦 setup shorebird
+      - name: Setup Shorebird
         uses: shorebirdtech/setup-shorebird@v1
-        with:
-          cache: true
 
-      - name: 📦 install dependencies
+      - name: Get Packages
         run: flutter pub get
 
-      # الخطوة الجوهرية: رفع التحديث الهوائي
-      - name: 🚀 push shorebird patch
+      - name: Run Patch
         run: |
-          # نستخدم yes | للموافقة التلقائية على رفع التحديث
-          # أمر patch بيرفع التعديلات فقط لآخر نسخة (Release) مرفوعة بنفس رقم الإصدار
-          yes | shorebird patch android --force || echo "⚠️ فشل إرسال الباتش، تأكد أنك رفعت Release بنفس رقم الإصدار أولاً"
+          yes | shorebird patch android --force || echo "⚠️ Warning ignored"
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      - name: 📢 notify telegram
-        if: success()
+      - name: Send Telegram
         run: |
-          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
-          curl -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-               -F text="🚀 تم إرسال تحديث هوائي (Patch) جديد بنجاح!
-               
-📦 النسخة المستهدفة: $VERSION
-✨ التعديلات ستظهر للمستخدمين عند إعادة تشغيل التطبيق." \
-               https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage
+          APK_PATH=$(find . -name "*.apk" | grep -v "unsigned" | head -n 1)
+          if [ -n "$APK_PATH" ]; then
+            curl -F document=@"$APK_PATH" \
+                 -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+                 -F caption="🚀 New Patch Sent!" \
+                 https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
+          fi
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
