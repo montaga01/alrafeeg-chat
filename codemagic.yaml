@@ -1,53 +1,80 @@
 workflows:
-  shorebird-workflow:
-    name: Shorebird Android Build (Fast Mode)
+  android-web-shorebird:
+    name: Build Web + Shorebird Android OTA
     max_build_duration: 60
-    instance_type: mac_mini_m1
     environment:
       groups:
-        - deployment # تأكد من وجود SHOREBIRD_TOKEN في هذه المجموعة
-      vars:
-        FLUTTER_VERSION: "stable"
-    
-    # ميزة الكاش: تخزين مجلد Shorebird ومجلد Pub لتقليل زمن التحميل
+        - deployment
+      flutter: stable
+
+    # ========== تخزين Shorebird في الكاش ==========
     cache:
       cache_paths:
-        - $HOME/.shorebird # تخزين أداة Shorebird ومحركها
-        - $HOME/.pub-cache # تخزين مكتبات فلاتر (اختياري لسرعة أكبر)
+        - $HOME/.shorebird
 
     scripts:
-      - name: Install Shorebird (With Connectivity Check)
+      - name: Get Flutter packages
+        script: flutter pub get
+
+      # ========== 1. بناء الويب ورفعه ==========
+      - name: Build Web
+        script: flutter build web --release
+
+      - name: Deploy Web to Server
         script: |
-          # التحقق إذا كانت Shorebird موجودة بالفعل في الكاش
-          if [ ! -d "$HOME/.shorebird" ]; then
-            echo "Installing Shorebird for the first time..."
-            curl --retry 3 --retry-delay 5 https://install.shorebird.dev | bash
+          cd build/web && zip -r ../../web-web.zip . && cd ../..
+          
+          echo "$SSH_PRIVATE_KEY" | base64 --decode > /tmp/id_rsa
+          chmod 600 /tmp/id_rsa
+
+          scp -i /tmp/id_rsa -o StrictHostKeyChecking=no web-web.zip root@173.214.173.203:/root/
+          
+          ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no root@173.214.173.203 << 'SERVER_EOF'
+            rm -rf ~/alrafeeg_api/test/*
+            mkdir -p ~/alrafeeg_api/temp_web/
+            unzip -o /root/web-web.zip -d ~/alrafeeg_api/temp_web/
+            cp -r ~/alrafeeg_api/temp_web/* ~/alrafeeg_api/test/
+            rm -rf ~/alrafeeg_api/temp_web/
+            mv /root/web-web.zip /root/web-web-$(date +%Y%m%d-%H%M%S).zip
+          SERVER_EOF
+
+          rm -f /tmp/id_rsa
+
+      # ========== 2. إعداد Shorebird (مع الكاش) ==========
+      - name: Setup Shorebird CLI
+        script: |
+          export PATH="$HOME/.shorebird/bin:$PATH"
+          echo "export PATH=$HOME/.shorebird/bin:$PATH" >> $BASH_ENV
+          
+          # التحقق: هل Shorebird موجودة في الكاش؟
+          if ! command -v shorebird &> /dev/null; then
+            echo "⬇️ Shorebird مش موجودة، بنبدأ تنزيلها..."
+            curl --proto '=https' -fLsS https://raw.githubusercontent.com/shorebirdtech/install/main/install.sh -o /tmp/install_shorebird.sh
+            bash /tmp/install_shorebird.sh
           else
-            echo "Shorebird found in cache, skipping installation."
+            echo "✅ Shorebird موجودة في الكاش، هنتخطى التنزيل!"
           fi
           
-          # إضافة المسار لبيئة Codemagic
-          echo "export PATH=$HOME/.shorebird/bin:\$PATH" >> $CM_ENV_VARS_FILE
+          shorebird --version
 
-      - name: Shorebird Login and Init
+      # ========== 3. بناء الأندرويد (ذكي) ==========
+      - name: Shorebird Build Android
         script: |
           export PATH="$HOME/.shorebird/bin:$PATH"
           
-          if [ -z "$SHOREBIRD_TOKEN" ]; then
-            echo "❌ SHOREBIRD_TOKEN is missing!"
-            exit 1
+          APP_ID=$(grep 'app_id:' shorebird.yaml | head -1 | sed 's/app_id: *//' | tr -d "'\"")
+          echo "App ID: $APP_ID"
+
+          RELEASES=$(shorebird releases list --app-id "$APP_ID" 2>/dev/null)
+
+          if echo "$RELEASES" | tail -n +3 | grep -qE '\S'; then
+            echo "✅ يوجد release سابق → عمل PATCH"
+            shorebird patch android --flutter-version stable
+          else
+            echo "🆕 أول مرة → عمل RELEASE"
+            shorebird release android --flutter-version stable --target-platform android-arm64
           fi
-
-          shorebird login --auth-token "$SHOREBIRD_TOKEN"
-          shorebird init --force
-
-      - name: Shorebird Build and Release
-        script: |
-          export PATH="$HOME/.shorebird/bin:$PATH"
-          
-          # بناء APK وإرساله كـ Release
-          shorebird release android --artifact apk --flutter-version $FLUTTER_VERSION
 
     artifacts:
-      - build/app/outputs/flutter-apk/*.apk
-      - shorebird.yaml
+      - build/app/outputs/flutter-apk/app-release.apk
+      - build/web/**
