@@ -7,7 +7,6 @@ workflows:
         - deployment
       flutter: stable
 
-    # ========== تخزين Shorebird في الكاش ==========
     cache:
       cache_paths:
         - $HOME/.shorebird
@@ -23,12 +22,9 @@ workflows:
       - name: Deploy Web to Server
         script: |
           cd build/web && zip -r ../../web-web.zip . && cd ../..
-          
           echo "$SSH_PRIVATE_KEY" | base64 --decode > /tmp/id_rsa
           chmod 600 /tmp/id_rsa
-
           scp -i /tmp/id_rsa -o StrictHostKeyChecking=no web-web.zip root@173.214.173.203:/root/
-          
           ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no root@173.214.173.203 << 'SERVER_EOF'
             rm -rf ~/alrafeeg_api/test/*
             mkdir -p ~/alrafeeg_api/temp_web/
@@ -37,41 +33,37 @@ workflows:
             rm -rf ~/alrafeeg_api/temp_web/
             mv /root/web-web.zip /root/web-web-$(date +%Y%m%d-%H%M%S).zip
           SERVER_EOF
-
           rm -f /tmp/id_rsa
 
-      # ========== 2. إعداد Shorebird (مع الكاش) ==========
+      # ========== 2. إعداد Shorebird ==========
       - name: Setup Shorebird CLI
         script: |
           export PATH="$HOME/.shorebird/bin:$PATH"
           echo "export PATH=$HOME/.shorebird/bin:$PATH" >> $BASH_ENV
-          
-          # التحقق: هل Shorebird موجودة في الكاش؟
           if ! command -v shorebird &> /dev/null; then
-            echo "⬇️ Shorebird مش موجودة، بنبدأ تنزيلها..."
             curl --proto '=https' -fLsS https://raw.githubusercontent.com/shorebirdtech/install/main/install.sh -o /tmp/install_shorebird.sh
             bash /tmp/install_shorebird.sh
-          else
-            echo "✅ Shorebird موجودة في الكاش، هنتخطى التنزيل!"
           fi
-          
           shorebird --version
 
-      # ========== 3. بناء الأندرويد (ذكي) ==========
+      # ========== 3. بناء الأندرويد واستخراج APK (تعديل هنا) ==========
       - name: Shorebird Build Android
         script: |
           export PATH="$HOME/.shorebird/bin:$PATH"
           
-          echo "جاري تجربة عمل PATCH..."
-          # نحاول نعمل Patch للإصدار الأخير، لو فشل (لأنه أول مرة) بينفذ الـ release
-          if shorebird patch android --release-version=latest; then
-            echo "✅ تم عمل PATCH بنجاح (تحديث خفيف)"
+          # نحاول عمل Patch أولاً
+          if shorebird patch android; then
+            echo "✅ تم عمل PATCH بنجاح"
+            # لكي يظهر الـ APK في الأرتيفاكتس حتى عند عمل Patch، نحتاج لبنائه يدوياً
+            flutter build apk --release
           else
-            echo "🆕 فشل الـ Patch (طبيعي لو أول مرة)، جاري عمل RELEASE..."
-            shorebird release android
+            echo "🆕 جاري عمل RELEASE واستخراج APK..."
+            # نستخدم --artifact apk لضمان إنشاء ملف الـ APK ورفعه لـ Shorebird
+            shorebird release android --artifact apk
           fi
 
     artifacts:
+      # تأكد من هذه المسارات لتجد ملفاتك جاهزة للتحميل
+      - build/app/outputs/flutter-apk/app-release.apk
       - build/app/outputs/bundle/release/app-release.aab
-      - build/app/outputs/flutter-apk/**
-      - build/web/**
+      - web-web.zip
