@@ -51,16 +51,24 @@ workflows:
         script: |
           export PATH="$HOME/.shorebird/bin:$PATH"
           
-          # 1. بناء الـ APK واستخراجه لمكان ثابت فوراً
-          echo "🔨 بناء الـ APK..."
-          shorebird build apk --output=build/outputs/alrafeeg-app.apk
+          # 1. بناء الـ APK باستخدام صيغة الـ Proxy لضمان قبول الأمر
+          echo "🔨 جاري بناء الـ APK..."
+          shorebird build apk -- --release
 
-          # 2. تنفيذ الـ Patch 
+          # 2. نسخ الملف فوراً قبل أن يقوم أمر الـ Patch بأي عمليات تنظيف
+          mkdir -p build/outputs/apk
+          if [ -f build/app/outputs/flutter-apk/app-release.apk ]; then
+            cp build/app/outputs/flutter-apk/app-release.apk build/outputs/apk/alrafeeg-app.apk
+            echo "✅ تم تجهيز ملف الـ APK بنجاح"
+          else
+            echo "❌ فشل العثور على ملف الـ APK"
+          fi
+
+          # 3. تنفيذ الـ Patch
           echo "🔄 جاري معالجة التحديث الهوائي..."
-          # استخدمنا --no-publish لو كنت عايز تجربة الأول، بس هنا حنخليها عادية
           shorebird patch android --release-version=latest
 
     artifacts:
-      - build/outputs/alrafeeg-app.apk     # المسار اللي حددناه في أمر build
-      - build/app/outputs/bundle/release/*.aab
+      - build/outputs/apk/alrafeeg-app.apk
+      - build/app/outputs/bundle/release/app-release.aab
       - web-web.zip
