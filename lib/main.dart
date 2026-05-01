@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // نحتاجها للتحقق من المنصة
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 
-// إنشاء كائن Shorebird للتعامل مع التحديثات
-final _shorebirdCodePush = ShorebirdCodePush();
+// ننشئ الكائن فقط إذا كان النظام أندرويد أو iOS وليس ويب
+final _shorebirdCodePush = kIsWeb ? null : ShorebirdCodePush();
 
 void main() {
   runApp(const MyApp());
@@ -31,45 +32,40 @@ class _HomePageState extends State<HomePage> {
   bool _isChecking = false;
 
   Future<void> _checkForUpdates() async {
-    setState(() {
-      _isChecking = true;
-    });
+    // إذا كان ويب، نخرج فوراً لأن Shorebird لا تدعم الويب
+    if (kIsWeb || _shorebirdCodePush == null) {
+      _showSnackBar('التحديثات الهوائية غير مدعومة على نسخة الويب');
+      return;
+    }
+
+    setState(() => _isChecking = true);
 
     try {
-      // 1. التحقق من دعم التحديثات الهوائية في هذه النسخة
-      final isUpdaterAvailable = _shorebirdCodePush.isUpdaterSupported();
+      final isUpdaterAvailable = _shorebirdCodePush!.isUpdaterSupported();
       
       if (!isUpdaterAvailable) {
-        _showSnackBar('التحديثات الهوائية غير مدعومة في هذه النسخة (Debug mode)');
+        _showSnackBar('التحديثات غير مدعومة في وضع التطوير (Debug)');
         return;
       }
 
-      // 2. التحقق من وجود تحديث جديد متاح للتحميل
-      final isUpdateAvailable = await _shorebirdCodePush.isNewPatchAvailableForDownload();
+      final isUpdateAvailable = await _shorebirdCodePush!.isNewPatchAvailableForDownload();
 
       if (isUpdateAvailable) {
         _showSnackBar('جاري تحميل تحديث جديد...');
-        
-        // 3. تحميل التحديث
-        await _shorebirdCodePush.downloadUpdateIfAvailable();
-        
-        _showDialog('اكتمل التحميل', 'تم تحميل التحديث بنجاح. يرجى إغلاق التطبيق وفتحه مرة أخرى لتطبيق التغييرات.');
+        await _shorebirdCodePush!.downloadUpdateIfAvailable();
+        _showDialog('اكتمل التحميل', 'يرجى إغلاق التطبيق وفتحه مرة أخرى.');
       } else {
         _showSnackBar('تطبيقك محدث لآخر نسخة.');
       }
     } catch (e) {
-      _showSnackBar('حدث خطأ أثناء التحقق من التحديثات');
+      _showSnackBar('حدث خطأ أثناء الفحص');
     } finally {
-      setState(() {
-        _isChecking = false;
-      });
+      setState(() => _isChecking = false);
     }
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message, textAlign: TextAlign.right, style: const TextStyle(fontFamily: 'Arial'))),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message, textAlign: TextAlign.right)));
   }
 
   void _showDialog(String title, String content) {
@@ -78,9 +74,7 @@ class _HomePageState extends State<HomePage> {
       builder: (context) => AlertDialog(
         title: Text(title, textAlign: TextAlign.right),
         content: Text(content, textAlign: TextAlign.right),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('حسناً')),
-        ],
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('حسناً'))],
       ),
     );
   }
@@ -93,24 +87,15 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              'الله أكبر',
-              style: TextStyle(
-                fontSize: 52,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
+            const Text('الله أكبر', style: TextStyle(fontSize: 52, fontWeight: FontWeight.bold)),
             const SizedBox(height: 40),
+            // الزر يظهر في كل المنصات ولكن وظيفته تختلف
             _isChecking 
               ? const CircularProgressIndicator() 
               : ElevatedButton.icon(
                   onPressed: _checkForUpdates,
                   icon: const Icon(Icons.update),
                   label: const Text('التحقق من وجود تحديث'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  ),
                 ),
           ],
         ),
