@@ -28,32 +28,49 @@ jobs:
       - name: 📦 install dependencies
         run: flutter pub get
 
-      # 5. بناء الرفع الفعلي باستخدام تقنية yes لتخطي التأكيدات
+      # بناء ورفع النسخة للمنصة مع تخطي أسئلة التأكيد
       - name: 🏗️ build and upload shorebird release
         run: |
-          # نستخدم yes | لمحاكاة ضغط حرف y لكل أسئلة شوربيرد (مثل التأكيد على الرفع)
-          yes | shorebird release android --artifact apk || echo "⚠️ حدث تنبيه لكن سنحاول المواصلة"
+          yes | shorebird release android --artifact apk || echo "⚠️ واصل رغم التنبيهات"
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      # 6. البحث عن الـ APK وإرساله لتلجرام
+      # حفظ الملف في Artifacts داخل قيت هاب للرجوع إليه لاحقاً
+      - name: 📦 upload artifact to github
+        uses: actions/upload-artifact@v4
+        with:
+          name: Alrafeeg-Builds
+          path: build/app/outputs/flutter-apk/*.apk
+          retention-days: 7
+
+      # تجهيز الاسم وإرسال النسخة لتلجرام
       - name: 📤 send to telegram
         run: |
-          echo "🔍 جاري البحث الشامل عن ملف الـ APK..."
+          echo "🔍 جاري تجهيز النسخة لتلجرام..."
           
-          # بحث عميق في كل المجلدات عن أي ملف APK تم إنتاجه
-          APK_PATH=$(find . -name "*.apk" | grep -v "unsigned" | head -n 1)
+          # استخراج رقم الإصدار للتميز بين النسخ
+          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
           
-          if [ -n "$APK_PATH" ]; then
-            echo "✅ تم العثور على الملف: $APK_PATH"
-            curl -v -F document=@"$APK_PATH" \
-                 -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-                 -F caption="✅ نسخة الرفيق (جاهزة للتحديث الهوائي) 🚀" \
-                 https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
-          else
-            echo "❌ للأسف لم يتم بناء ملف APK، راجع Logs خطوة البناء"
+          # البحث عن الملف وتغيير اسمه
+          APK_ORIGINAL=$(find . -name "*.apk" | grep -v "unsigned" | head -n 1)
+          
+          if [ -z "$APK_ORIGINAL" ]; then
+            echo "❌ لم يتم العثور على ملف APK"
             exit 1
           fi
+          
+          NEW_NAME="Alrafeeg_v${VERSION}.apk"
+          cp "$APK_ORIGINAL" "$NEW_NAME"
+          
+          echo "✅ تم تجهيز الملف: $NEW_NAME"
+          
+          curl -v -F document=@"$NEW_NAME" \
+               -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+               -F caption="🚀 نسخة الرفيق الجديدة جاهزة!
+               
+📦 الإصدار: $VERSION
+✨ تدعم التحديث الهوائي (Shorebird)" \
+               https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
