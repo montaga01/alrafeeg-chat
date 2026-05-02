@@ -1,5 +1,6 @@
 name: Shorebird Smart CI
 
+
 on:
   push:
     branches:
