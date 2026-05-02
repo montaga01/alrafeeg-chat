@@ -5,6 +5,7 @@ import 'core/storage.dart';
 import 'providers/theme_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'core/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
