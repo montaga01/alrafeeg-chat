@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../models/message.dart';
 
@@ -76,7 +75,7 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c       = AppColors.of(context);
-    final timeStr = _fmtTime(message.timestamp);
+    final timeStr = DateFormat('hh:mm a').format(message.timestamp);
 
     return Padding(
       padding: EdgeInsets.only(
