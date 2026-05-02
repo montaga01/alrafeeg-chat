@@ -1,4 +1,4 @@
-name: shorebird-ultra-smart
+name: shorebird-smart-system
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   actions: write
 
 jobs:
-  process:
+  shorebird_task:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,30 +19,32 @@ jobs:
           channel: stable
       - uses: shorebirdtech/setup-shorebird@v1
 
-      - name: smart-check
+      - name: 🧠 Smart Logic
         id: check
         run: |
-          # 1. استخراج الإصدار الكامل (مثلاً 1.0.2+4)
+          # 1. استخراج النسخة من pubspec
           FULL_VER=$(grep version: pubspec.yaml | sed 's/version: //')
           echo "target=$FULL_VER" >> $GITHUB_OUTPUT
           
-          # 2. فحص دقيق جداً في قائمة الريليز
-          # بنبحث عن الرقم الكامل مع الزائد عشان نكون دقيقين
-          if shorebird releases list | grep -q "$FULL_VER"; then
-            echo "mode=patch" >> $GITHUB_OUTPUT
-            echo "✅ النسخة موجودة.. حنعمل Patch"
+          # 2. فحص هل النسخة موجودة فعلاً؟
+          # استخدمنا --json وسحبنا الـ version عشان الدقة
+          EXISTING_RELEASES=$(shorebird releases list --json | grep -o "$FULL_VER" || true)
+          
+          if [ "$EXISTING_RELEASES" == "$FULL_VER" ]; then
+            echo "decision=patch" >> $GITHUB_OUTPUT
+            echo "✅ الإصدار $FULL_VER موجود.. سنقوم بعمل Patch"
           else
-            echo "mode=release" >> $GITHUB_OUTPUT
-            echo "🏗️ نسخة جديدة.. حنعمل Release"
+            echo "decision=release" >> $GITHUB_OUTPUT
+            echo "🏗️ إصدار جديد $FULL_VER.. سنقوم بعمل Release"
           fi
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
       - run: flutter pub get
 
-      - name: execute-action
+      - name: 🚀 Execute Action
         run: |
-          if [ "${{ steps.check.outputs.mode }}" == "release" ]; then
+          if [ "${{ steps.check.outputs.decision }}" == "release" ]; then
             yes | shorebird release android --artifact apk
           else
             yes | shorebird patch android --release-version=latest
@@ -50,18 +52,24 @@ jobs:
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      - name: telegram-notify
+      - name: 📢 Notify Telegram
         if: success()
         run: |
           VER=${{ steps.check.outputs.target }}
-          if [ "${{ steps.check.outputs.mode }}" == "release" ]; then
+          DECISION=${{ steps.check.outputs.decision }}
+          
+          if [ "$DECISION" == "release" ]; then
             APK=$(find . -name "*.apk" | grep -v unsigned | head -n 1)
-            # تغيير الاسم ليكون واضح في تلجرام
             NAME="Alrafeeg_v${VER}.apk"
             cp "$APK" "$NAME"
-            curl -F document=@"$NAME" -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -F caption="🏗️ ريليز جديد: $VER" https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
+            curl -F document=@"$NAME" \
+                 -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+                 -F caption="🏗️ نسخة Release جديدة: $VER" \
+                 https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
           else
-            curl -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -F text="✅ باتش هوائي تم بنجاح للإصدار: $VER" https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage
+            curl -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+                 -F text="✅ تم رفع الباتش الهوائي بنجاح للإصدار: $VER" \
+                 https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage
           fi
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
