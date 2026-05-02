@@ -13,7 +13,6 @@ permissions:
 jobs:
   build_and_release:
     runs-on: ubuntu-latest
-
     steps:
       - name: 📂 Checkout code
         uses: actions/checkout@v4
@@ -22,43 +21,32 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          cache: true
 
       - name: 🐦 Setup Shorebird
         uses: shorebirdtech/setup-shorebird@v1
-        with:
-          cache: true
 
       - name: 📦 Install dependencies
         run: flutter pub get
 
-      # بناء النسخة الأساسية (Release) للرقم الجديد 1.0.1+3
       - name: 🏗️ Build and Release
         run: |
           yes | shorebird release android --artifact apk
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      # إرسال الملف لتليجرام عشان تثبته في تلفونك
       - name: 📤 Send APK to Telegram
         if: success()
         run: |
-          # البحث عن ملف الـ APK الناتج
           APK_PATH=$(find . -name "*.apk" | grep -v "unsigned" | head -n 1)
-          
           if [ -n "$APK_PATH" ]; then
             VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
-            
             curl -v -F document=@"$APK_PATH" \
                  -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
                  -F caption="🚀 نسخة الرفيق الجديدة جاهزة!
-📦 الإصدار: $VERSION
-⚠️ ثبت هذه النسخة يدوياً لتفعيل التحديثات الهوائية مستقبلاً." \
+📦 الإصدار: $VERSION" \
                  https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
-          else
-            echo "❌ APK not found"
-            exit 1
           fi
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
