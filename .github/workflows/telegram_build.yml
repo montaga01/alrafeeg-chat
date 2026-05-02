@@ -1,9 +1,8 @@
-name: shorebird-smart-ci
+name: shorebird-ultra-smart
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -15,32 +14,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-
       - uses: shorebirdtech/setup-shorebird@v1
 
-      - run: flutter pub get
-
-      - name: check-version
+      - name: smart-check
         id: check
         run: |
+          # 1. استخراج الإصدار الكامل (مثلاً 1.0.2+4)
           FULL_VER=$(grep version: pubspec.yaml | sed 's/version: //')
-          BASE_VER=$(echo $FULL_VER | cut -d+ -f1)
-          echo target=$FULL_VER >> $GITHUB_OUTPUT
-          if shorebird releases list | grep -q $BASE_VER; then
-            echo mode=patch >> $GITHUB_OUTPUT
+          echo "target=$FULL_VER" >> $GITHUB_OUTPUT
+          
+          # 2. فحص دقيق جداً في قائمة الريليز
+          # بنبحث عن الرقم الكامل مع الزائد عشان نكون دقيقين
+          if shorebird releases list | grep -q "$FULL_VER"; then
+            echo "mode=patch" >> $GITHUB_OUTPUT
+            echo "✅ النسخة موجودة.. حنعمل Patch"
           else
-            echo mode=release >> $GITHUB_OUTPUT
+            echo "mode=release" >> $GITHUB_OUTPUT
+            echo "🏗️ نسخة جديدة.. حنعمل Release"
           fi
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      - name: execute
+      - run: flutter pub get
+
+      - name: execute-action
         run: |
-          if [ ${{ steps.check.outputs.mode }} == release ]; then
+          if [ "${{ steps.check.outputs.mode }}" == "release" ]; then
             yes | shorebird release android --artifact apk
           else
             yes | shorebird patch android --release-version=latest
@@ -48,17 +50,18 @@ jobs:
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      - name: telegram
+      - name: telegram-notify
         if: success()
         run: |
           VER=${{ steps.check.outputs.target }}
-          if [ ${{ steps.check.outputs.mode }} == release ]; then
-            APK=$(find . -name *.apk | grep -v unsigned | head -n 1)
-            NAME=Alrafeeg_v$VER.apk
-            cp $APK $NAME
-            curl -F document=@$NAME -F chat_id=${{ secrets.TELEGRAM_CHAT_ID }} -F caption=Release_$VER https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
+          if [ "${{ steps.check.outputs.mode }}" == "release" ]; then
+            APK=$(find . -name "*.apk" | grep -v unsigned | head -n 1)
+            # تغيير الاسم ليكون واضح في تلجرام
+            NAME="Alrafeeg_v${VER}.apk"
+            cp "$APK" "$NAME"
+            curl -F document=@"$NAME" -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -F caption="🏗️ ريليز جديد: $VER" https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
           else
-            curl -F chat_id=${{ secrets.TELEGRAM_CHAT_ID }} -F text=Patch_$VER_Done https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage
+            curl -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -F text="✅ باتش هوائي تم بنجاح للإصدار: $VER" https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage
           fi
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
