@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart'; // تصحيح حرف الـ i الصغير هنا
+import 'dart:ui' as ui; // حل مشكلة التعرف على الاتجاه في الـ CI
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -28,6 +29,7 @@ class MessageBubble extends StatelessWidget {
     this.onRetry,
   });
 
+  // ── منطق حواف الفقاعة ──
   BorderRadius _radius() {
     const r  = Radius.circular(18);
     const r4 = Radius.circular(4);
@@ -52,7 +54,7 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c       = AppColors.of(context);
-    // استخدام DateFormat مباشرة من مكتبة intl
+    // تنسيق الوقت باستخدام مكتبة intl
     final timeStr = DateFormat('hh:mm a').format(message.timestamp);
 
     return Padding(
@@ -81,12 +83,15 @@ class MessageBubble extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // نص الرسالة مع تحديد الاتجاه بشكل صارم
                   Text(
                     message.content,
                     style: AppTextStyles.bubbleText(isMe: isMe, c: c),
-                    textDirection: TextDirection.rtl, // الآن ستعمل لأن الـ import صحيح
+                    textDirection: ui.TextDirection.rtl, 
                   ),
                   const SizedBox(height: 4),
+
+                  // الوقت وحالة الإرسال
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -108,6 +113,8 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
           ),
+
+          // زر إعادة الإرسال في حالة الفشل
           if (hasFailed && onRetry != null) ...[
             const SizedBox(height: 4),
             GestureDetector(
@@ -149,6 +156,7 @@ class MessageBubble extends StatelessWidget {
   }
 }
 
+// ── أيقونة الحالة ──
 class _StatusIcon extends StatelessWidget {
   final bool           isPending;
   final bool           hasFailed;
@@ -168,6 +176,7 @@ class _StatusIcon extends StatelessWidget {
   }
 }
 
+// ── Extension لتعديل الـ Decoration ──
 extension BoxDecorationX on BoxDecoration {
   BoxDecoration copyWith({
     Color?             color,
