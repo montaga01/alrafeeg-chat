@@ -1,11 +1,11 @@
 {
-    "name": "shorebird_test",
-    "short_name": "shorebird_test",
+    "name": "الرفيق",
+    "short_name": "الرفيق",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#f0f4ff",
+    "theme_color": "#1a56db",
+    "description": "تطبيق الرفيق للدردشة",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
