@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   actions: write
 
 jobs:
@@ -51,13 +51,9 @@ jobs:
       - name: 🧠 Smart Comparison Logic
         id: check
         run: |
-          # اكتب يدوياً هنا آخر إصدار في Shorebird
           LATEST_ON_SHOREBIRD="1.0.2+4"
-          
           CURRENT_APP_VER=$(grep version: pubspec.yaml | sed 's/version: //' | xargs)
-          
           echo "target=$CURRENT_APP_VER" >> $GITHUB_OUTPUT
-
           if [ "$CURRENT_APP_VER" == "$LATEST_ON_SHOREBIRD" ]; then
             echo "mode=patch" >> $GITHUB_OUTPUT
           else
@@ -76,19 +72,32 @@ jobs:
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      # ========== 4. إشعار تلجرام ==========
+      # ========== 4. رفع الـ APK على GitHub Releases ==========
+      - name: 📦 Upload APK to GitHub Releases
+        if: success() && steps.check.outputs.mode == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.check.outputs.target }}
+          name: "الرفيق v${{ steps.check.outputs.target }}"
+          files: build/app/outputs/flutter-apk/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ========== 5. إشعار تلجرام ==========
       - name: 📢 Telegram Notification
         if: success()
         run: |
           VER=${{ steps.check.outputs.target }}
           MODE=${{ steps.check.outputs.mode }}
           if [ "$MODE" == "release" ]; then
-            APK=$(find build/app/outputs/flutter-apk/ -name "*.apk" | grep -v unsigned | head -n 1)
-            NAME="Alrafeeg_v${VER}.apk"
-            cp "$APK" "$NAME"
-            curl -F document=@"$NAME" -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -F caption="🏗️ نسخة جديدة: $VER" https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
+            URL="https://github.com/${{ github.repository }}/releases/tag/v${VER}"
+            curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+              -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+              -d text="🏗️ نسخة جديدة: ${VER}%0A📥 تحميل الـ APK: ${URL}"
           else
-            curl -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -F text="✅ تم تحديث الويب وباتش الأندرويد: $VER" https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage
+            curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+              -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+              -d text="✅ تم تحديث الويب وباتش الأندرويد: ${VER}"
           fi
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
