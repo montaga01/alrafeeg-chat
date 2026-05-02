@@ -1,4 +1,4 @@
-name: shorebird-release
+name: shorebird-process
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   actions: write
 
 jobs:
-  build:
+  build_job:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
@@ -28,20 +28,40 @@ jobs:
       - name: pub-get
         run: flutter pub get
 
-      - name: shorebird-release
+      # ==========================================
+      # منطقة التعديل الرئيسية (Release أو Patch)
+      # ==========================================
+      - name: shorebird-action
+        # لتشغيل الباتش لاحقاً: غير السطر اللي تحت لـ: yes | shorebird patch android --release-version=latest
         run: yes | shorebird release android --artifact apk
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
+      # ==========================================
+      # منطقة تسمية الملف وإرساله لتلجرام
+      # ==========================================
       - name: telegram-send
         if: success()
         run: |
-          APK_PATH=$(find . -name "*.apk" | grep -v "unsigned" | head -n 1)
-          if [ -n "$APK_PATH" ]; then
-            curl -F document=@"$APK_PATH" \
+          # 1. البحث عن الملف الأصلي
+          ORIGINAL_APK=$(find . -name "*.apk" | grep -v "unsigned" | head -n 1)
+          
+          if [ -n "$ORIGINAL_APK" ]; then
+            # 2. استخراج رقم الإصدار من pubspec.yaml تلقائياً
+            VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+            
+            # 3. تسمية الملف باسم واضح (تقدر تغير Alrafeeg لأي اسم تحبه)
+            NEW_NAME="Alrafeeg_v${VERSION}.apk"
+            cp "$ORIGINAL_APK" "$NEW_NAME"
+            
+            # 4. الإرسال لتلجرام بالاسم الجديد
+            curl -F document=@"$NEW_NAME" \
                  -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-                 -F caption="Release 1.0.1+3 Ready" \
+                 -F caption="🚀 تم بناء نسخة جديدة بنجاح
+📦 الإصدار: $VERSION" \
                  https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
+          else
+            echo "⚠️ لم يتم العثور على ملف APK (ربما تم تشغيل Patch فقط)"
           fi
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
