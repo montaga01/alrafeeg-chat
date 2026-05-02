@@ -1,5 +1,4 @@
-name: Shorebird Smart CI
-
+name: shorebird-smart-ci
 
 on:
   push:
@@ -12,47 +11,36 @@ permissions:
   actions: write
 
 jobs:
-  shorebird_process:
+  process:
     runs-on: ubuntu-latest
     steps:
-      - name: 📂 Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 🚀 Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: stable
 
-      - name: 🐦 Setup Shorebird
-        uses: shorebirdtech/setup-shorebird@v1
+      - uses: shorebirdtech/setup-shorebird@v1
 
-      - name: 📦 Install
-        run: flutter pub get
+      - run: flutter pub get
 
-      - name: 🧠 Smart Decision (Release or Patch)
-        id: shorebird_check
+      - name: check-version
+        id: check
         run: |
-          # 1. استخراج رقم الإصدار من pubspec
-          FULL_VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
-          # استخراج الجزء قبل الزائد (مثلاً 1.0.1)
-          BASE_VERSION=$(echo $FULL_VERSION | cut -d'+' -f1)
-          echo "target_version=$FULL_VERSION" >> $GITHUB_OUTPUT
-
-          # 2. التحقق من وجود النسخة في شوربيرد
-          # نتحقق إذا كان الإصدار موجود في قائمة الريليز
-          if shorebird releases list | grep -q "$BASE_VERSION"; then
-            echo "decision=patch" >> $GITHUB_OUTPUT
-            echo "🚀 الإصدار موجود.. جاري عمل Patch"
+          FULL_VER=$(grep version: pubspec.yaml | sed 's/version: //')
+          BASE_VER=$(echo $FULL_VER | cut -d+ -f1)
+          echo target=$FULL_VER >> $GITHUB_OUTPUT
+          if shorebird releases list | grep -q $BASE_VER; then
+            echo mode=patch >> $GITHUB_OUTPUT
           else
-            echo "decision=release" >> $GITHUB_OUTPUT
-            echo "🏗️ إصدار جديد.. جاري عمل Release"
+            echo mode=release >> $GITHUB_OUTPUT
           fi
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      - name: 🛠️ Execute Shorebird
+      - name: execute
         run: |
-          if [ "${{ steps.shorebird_check.outputs.decision }}" == "release" ]; then
+          if [ ${{ steps.check.outputs.mode }} == release ]; then
             yes | shorebird release android --artifact apk
           else
             yes | shorebird patch android --release-version=latest
@@ -60,31 +48,17 @@ jobs:
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      - name: 📢 Telegram Notification
+      - name: telegram
         if: success()
         run: |
-          VERSION="${{ steps.shorebird_check.outputs.target_version }}"
-          DECISION="${{ steps.shorebird_check.outputs.decision }}"
-          
-          if [ "$DECISION" == "release" ]; then
-            # في حالة الريليز، نغير اسم الملف ونرسله
-            ORIGINAL_APK=$(find . -name "*.apk" | grep -v "unsigned" | head -n 1)
-            NEW_NAME="Alrafeeg_v${VERSION}.apk"
-            cp "$ORIGINAL_APK" "$NEW_NAME"
-            
-            curl -F document=@"$NEW_NAME" \
-                 -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-                 -F caption="🏗️ نسخة Release جديدة!
-📦 الإصدار: $VERSION
-⚠️ حمل وثبت الملف ده يدوياً." \
-                 https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
+          VER=${{ steps.check.outputs.target }}
+          if [ ${{ steps.check.outputs.mode }} == release ]; then
+            APK=$(find . -name *.apk | grep -v unsigned | head -n 1)
+            NAME=Alrafeeg_v$VER.apk
+            cp $APK $NAME
+            curl -F document=@$NAME -F chat_id=${{ secrets.TELEGRAM_CHAT_ID }} -F caption=Release_$VER https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
           else
-            # في حالة الباتش، نرسل رسالة نصية فقط
-            curl -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-                 -F text="✅ تم تحديث الباتش هوائياً!
-📦 الإصدار المستهدف: $VERSION
-✨ التعديلات حتظهر عند إعادة تشغيل التطبيق." \
-                 https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage
+            curl -F chat_id=${{ secrets.TELEGRAM_CHAT_ID }} -F text=Patch_$VER_Done https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage
           fi
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
