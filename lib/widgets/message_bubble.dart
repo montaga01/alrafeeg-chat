@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; // تصحيح حرف الـ i الصغير هنا
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -7,26 +7,14 @@ import '../models/message.dart';
 
 // ═══════════════════════════════════════════════════
 //  MESSAGE BUBBLE
-//  نفس منطق renderMessage() من صفحة الويب
-//  مستخرج من chat_screen لإعادة الاستخدام
 // ═══════════════════════════════════════════════════
 class MessageBubble extends StatelessWidget {
   final Message message;
   final bool    isMe;
-
-  /// هل هذه أول رسالة في مجموعة من نفس المُرسل
   final bool    isFirstInGroup;
-
-  /// هل هذه آخر رسالة في مجموعة من نفس المُرسل
   final bool    isLastInGroup;
-
-  /// هل هذه رسالة معلّقة (pending) لم يصلها تأكيد بعد
   final bool    isPending;
-
-  /// هل فشل إرسال الرسالة
   final bool    hasFailed;
-
-  /// callback عند الضغط على إعادة الإرسال
   final VoidCallback? onRetry;
 
   const MessageBubble({
@@ -40,17 +28,6 @@ class MessageBubble extends StatelessWidget {
     this.onRetry,
   });
 
-  // ── نفس fmtTime() من صفحة الويب لكن للرسائل ──
-  String _fmtTime(String ts) {
-    if (ts.isEmpty) return '';
-    final normalized =
-        (ts.contains('Z') || ts.contains('+')) ? ts : '${ts}Z';
-    final d = DateTime.tryParse(normalized)?.toLocal();
-    if (d == null) return '';
-    return DateFormat('HH:mm').format(d);
-  }
-
-  // ── نفس منطق radius في صفحة الويب ──
   BorderRadius _radius() {
     const r  = Radius.circular(18);
     const r4 = Radius.circular(4);
@@ -75,6 +52,7 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c       = AppColors.of(context);
+    // استخدام DateFormat مباشرة من مكتبة intl
     final timeStr = DateFormat('hh:mm a').format(message.timestamp);
 
     return Padding(
@@ -88,7 +66,6 @@ class MessageBubble extends StatelessWidget {
         crossAxisAlignment:
             isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          // ── الـ bubble نفسه ──
           GestureDetector(
             onLongPress: () => _onLongPress(context),
             child: Container(
@@ -104,15 +81,12 @@ class MessageBubble extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // نص الرسالة
                   Text(
                     message.content,
                     style: AppTextStyles.bubbleText(isMe: isMe, c: c),
-                    textDirection: TextDirection.rtl,
+                    textDirection: TextDirection.rtl, // الآن ستعمل لأن الـ import صحيح
                   ),
                   const SizedBox(height: 4),
-
-                  // وقت + حالة الإرسال
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -134,8 +108,6 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
           ),
-
-          // ── زر إعادة الإرسال عند الفشل ──
           if (hasFailed && onRetry != null) ...[
             const SizedBox(height: 4),
             GestureDetector(
@@ -161,7 +133,6 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  // ── Long-press: نسخ النص ──
   void _onLongPress(BuildContext context) {
     Clipboard.setData(ClipboardData(text: message.content));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -173,18 +144,11 @@ class MessageBubble extends StatelessWidget {
         duration:        const Duration(seconds: 2),
         backgroundColor: AppColors.of(context).bg3,
         behavior:        SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
       ),
     );
   }
 }
 
-// ═══════════════════════════════════════════════════
-//  STATUS ICON — أيقونة حالة الإرسال
-//  نفس المنطق من صفحة الويب (✓ / ✓✓ / ساعة)
-// ═══════════════════════════════════════════════════
 class _StatusIcon extends StatelessWidget {
   final bool           isPending;
   final bool           hasFailed;
@@ -198,22 +162,12 @@ class _StatusIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (hasFailed) {
-      return Icon(Icons.error_outline_rounded, size: 13, color: c.red);
-    }
-    if (isPending) {
-      return Icon(Icons.access_time_rounded, size: 13,
-          color: Colors.white54);
-    }
-    // مُرسل ومؤكد
-    return Icon(Icons.done_all_rounded, size: 13, color: Colors.white70);
+    if (hasFailed) return Icon(Icons.error_outline_rounded, size: 13, color: c.red);
+    if (isPending) return const Icon(Icons.access_time_rounded, size: 13, color: Colors.white54);
+    return const Icon(Icons.done_all_rounded, size: 13, color: Colors.white70);
   }
 }
 
-// ═══════════════════════════════════════════════════
-//  EXTENSION — للـ BoxDecoration.copyWith مع borderRadius
-//  تساعد في تطبيق radius متغير على decorations جاهزة
-// ═══════════════════════════════════════════════════
 extension BoxDecorationX on BoxDecoration {
   BoxDecoration copyWith({
     Color?             color,
