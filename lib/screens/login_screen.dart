@@ -107,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    'الرفيق',
+                    'الرفيق (1)',
                     style: GoogleFonts.tajawal(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
