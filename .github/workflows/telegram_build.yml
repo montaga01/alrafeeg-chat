@@ -1,9 +1,8 @@
-name: shorebird-patch-only
+name: shorebird-manual-comparison
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -11,38 +10,70 @@ permissions:
   actions: write
 
 jobs:
-  patch:
+  process:
     runs-on: ubuntu-latest
     steps:
-      - name: 📂 Checkout
-        uses: actions/checkout@v4
-
-      - name: 🚀 Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: stable
+      - uses: shorebirdtech/setup-shorebird@v1
 
-      - name: 🐦 Setup Shorebird
-        uses: shorebirdtech/setup-shorebird@v1
+      - name: 🧠 Smart Comparison Logic
+        id: check
+        run: |
+          # 1. اكتب يدوياً هنا آخر إصدار رفعته في Shorebird Console
+          LATEST_ON_SHOREBIRD="1.0.2+4"
+          
+          # 2. استخراج الإصدار الحالي من ملف pubspec.yaml
+          CURRENT_APP_VER=$(grep version: pubspec.yaml | sed 's/version: //' | xargs)
+          
+          echo "النسخة في السيرفر: $LATEST_ON_SHOREBIRD"
+          echo "النسخة في الكود حالياً: $CURRENT_APP_VER"
+          echo "target=$CURRENT_APP_VER" >> $GITHUB_OUTPUT
 
-      - name: 📦 Install
-        run: flutter pub get
-
-      - name: ⚡ Run Patch
-        # هذا الأمر يرفع التحديث لآخر نسخة مرفوعة في الكونسول (1.0.2+4)
-        run: yes | shorebird patch android --release-version=latest
+          # 3. المقارنة
+          if [ "$CURRENT_APP_VER" == "$LATEST_ON_SHOREBIRD" ]; then
+            echo "mode=patch" >> $GITHUB_OUTPUT
+            echo "المطابقة: النسخة نفسها -> جاري عمل PATCH"
+          else
+            echo "mode=release" >> $GITHUB_OUTPUT
+            echo "المطابقة: نسخة جديدة -> جاري عمل RELEASE"
+          fi
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      - name: 📢 Telegram Notification
+      - run: flutter pub get
+
+      - name: 🚀 Execute Action
+        run: |
+          if [ "${{ steps.check.outputs.mode }}" == "release" ]; then
+            yes | shorebird release android --artifact apk
+          else
+            yes | shorebird patch android --release-version=latest
+          fi
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+
+      - name: 📢 Telegram Notify
         if: success()
         run: |
-          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //' | xargs)
-          curl -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-               -F text="✅ تم رفع الباتش الهوائي بنجاح!
-📦 الإصدار: $VERSION
-✨ التعديلات ستظهر للمستخدمين عند إغلاق التطبيق وفتحه مجدداً." \
-               https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage
+          VER=${{ steps.check.outputs.target }}
+          MODE=${{ steps.check.outputs.mode }}
+          
+          if [ "$MODE" == "release" ]; then
+            APK=$(find . -name "*.apk" | grep -v unsigned | head -n 1)
+            NAME="Alrafeeg_v${VER}.apk"
+            cp "$APK" "$NAME"
+            curl -F document=@"$NAME" \
+                 -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+                 -F caption="🏗️ ريليز جديد: $VER" \
+                 https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
+          else
+            curl -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+                 -F text="✅ تم رفع الباتش بنجاح للإصدار الحالي: $VER" \
+                 https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage
+          fi
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
