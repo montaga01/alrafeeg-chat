@@ -1,4 +1,4 @@
-name: Shorebird Release 1.0.1+3
+name: shorebird-release
 
 on:
   push:
@@ -11,42 +11,38 @@ permissions:
   actions: write
 
 jobs:
-  build_and_release:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: 📂 Checkout code
+      - name: checkout
         uses: actions/checkout@v4
 
-      - name: 🚀 Setup Flutter
+      - name: flutter-setup
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
 
-      - name: 🐦 Setup Shorebird
+      - name: shorebird-setup
         uses: shorebirdtech/setup-shorebird@v1
 
-      - name: 📦 Install dependencies
+      - name: pub-get
         run: flutter pub get
 
-      - name: 🏗️ Build and Release
-        run: |
-          yes | shorebird release android --artifact apk
+      - name: shorebird-release
+        run: yes | shorebird release android --artifact apk
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      - name: 📤 Send APK to Telegram
+      - name: telegram-send
         if: success()
         run: |
           APK_PATH=$(find . -name "*.apk" | grep -v "unsigned" | head -n 1)
           if [ -n "$APK_PATH" ]; then
-            VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
-            curl -v -F document=@"$APK_PATH" \
+            curl -F document=@"$APK_PATH" \
                  -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-                 -F caption="🚀 نسخة الرفيق الجديدة جاهزة!
-📦 الإصدار: $VERSION" \
+                 -F caption="Release 1.0.1+3 Ready" \
                  https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
           fi
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-
