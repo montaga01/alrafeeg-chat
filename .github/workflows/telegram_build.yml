@@ -1,4 +1,4 @@
-name: shorebird-process
+name: Shorebird Smart CI
 
 on:
   push:
@@ -11,57 +11,79 @@ permissions:
   actions: write
 
 jobs:
-  build_job:
+  shorebird_process:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
+      - name: 📂 Checkout
         uses: actions/checkout@v4
 
-      - name: flutter-setup
+      - name: 🚀 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
 
-      - name: shorebird-setup
+      - name: 🐦 Setup Shorebird
         uses: shorebirdtech/setup-shorebird@v1
 
-      - name: pub-get
+      - name: 📦 Install
         run: flutter pub get
 
-      # ==========================================
-      # منطقة التعديل الرئيسية (Release أو Patch)
-      # ==========================================
-      - name: shorebird-action
-        # لتشغيل الباتش لاحقاً: غير السطر اللي تحت لـ: yes | shorebird patch android --release-version=latest
-        run: yes | shorebird release android --artifact apk
+      - name: 🧠 Smart Decision (Release or Patch)
+        id: shorebird_check
+        run: |
+          # 1. استخراج رقم الإصدار من pubspec
+          FULL_VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+          # استخراج الجزء قبل الزائد (مثلاً 1.0.1)
+          BASE_VERSION=$(echo $FULL_VERSION | cut -d'+' -f1)
+          echo "target_version=$FULL_VERSION" >> $GITHUB_OUTPUT
+
+          # 2. التحقق من وجود النسخة في شوربيرد
+          # نتحقق إذا كان الإصدار موجود في قائمة الريليز
+          if shorebird releases list | grep -q "$BASE_VERSION"; then
+            echo "decision=patch" >> $GITHUB_OUTPUT
+            echo "🚀 الإصدار موجود.. جاري عمل Patch"
+          else
+            echo "decision=release" >> $GITHUB_OUTPUT
+            echo "🏗️ إصدار جديد.. جاري عمل Release"
+          fi
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
 
-      # ==========================================
-      # منطقة تسمية الملف وإرساله لتلجرام
-      # ==========================================
-      - name: telegram-send
+      - name: 🛠️ Execute Shorebird
+        run: |
+          if [ "${{ steps.shorebird_check.outputs.decision }}" == "release" ]; then
+            yes | shorebird release android --artifact apk
+          else
+            yes | shorebird patch android --release-version=latest
+          fi
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+
+      - name: 📢 Telegram Notification
         if: success()
         run: |
-          # 1. البحث عن الملف الأصلي
-          ORIGINAL_APK=$(find . -name "*.apk" | grep -v "unsigned" | head -n 1)
+          VERSION="${{ steps.shorebird_check.outputs.target_version }}"
+          DECISION="${{ steps.shorebird_check.outputs.decision }}"
           
-          if [ -n "$ORIGINAL_APK" ]; then
-            # 2. استخراج رقم الإصدار من pubspec.yaml تلقائياً
-            VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
-            
-            # 3. تسمية الملف باسم واضح (تقدر تغير Alrafeeg لأي اسم تحبه)
+          if [ "$DECISION" == "release" ]; then
+            # في حالة الريليز، نغير اسم الملف ونرسله
+            ORIGINAL_APK=$(find . -name "*.apk" | grep -v "unsigned" | head -n 1)
             NEW_NAME="Alrafeeg_v${VERSION}.apk"
             cp "$ORIGINAL_APK" "$NEW_NAME"
             
-            # 4. الإرسال لتلجرام بالاسم الجديد
             curl -F document=@"$NEW_NAME" \
                  -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-                 -F caption="🚀 تم بناء نسخة جديدة بنجاح
-📦 الإصدار: $VERSION" \
+                 -F caption="🏗️ نسخة Release جديدة!
+📦 الإصدار: $VERSION
+⚠️ حمل وثبت الملف ده يدوياً." \
                  https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument
           else
-            echo "⚠️ لم يتم العثور على ملف APK (ربما تم تشغيل Patch فقط)"
+            # في حالة الباتش، نرسل رسالة نصية فقط
+            curl -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+                 -F text="✅ تم تحديث الباتش هوائياً!
+📦 الإصدار المستهدف: $VERSION
+✨ التعديلات حتظهر عند إعادة تشغيل التطبيق." \
+                 https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage
           fi
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
