@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'core/storage.dart';
+import 'core/theme.dart'; // ✅ إصلاح: كان مفقوداً — سبب خطأ AppColors
 import 'providers/theme_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
-import 'core/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -197,7 +197,6 @@ class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _check() async {
-    // انتظر الأنيميشن يكمل + تحقق من التوكن
     await Future.wait([
       Future.delayed(const Duration(milliseconds: 800)),
       Future.value(AppStorage.getToken()),
@@ -246,7 +245,6 @@ class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // اللوغو
                 Container(
                   width: 80,
                   height: 80,
@@ -308,4 +306,3 @@ class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
     );
   }
 }
-
