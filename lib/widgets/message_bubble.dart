@@ -100,13 +100,10 @@ class MessageBubble extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // نص الرسالة
-                  // ✅ إصلاح: TextDirection.rtl يأتي من dart:ui عبر flutter/material
-                  // لكن في بعض إصدارات flutter يُستخدم Directionality بدلاً منه
+                  // نص الرسالة — اتجاه النص يُورث من MaterialApp (RTL)
                   Text(
                     message.content,
                     style: AppTextStyles.bubbleText(isMe: isMe, c: c),
-                    textDirection: TextDirection.rtl,
                   ),
                   const SizedBox(height: 4),
 
