@@ -51,7 +51,7 @@ jobs:
       - name: 🧠 Smart Comparison Logic
         id: check
         run: |
-          LATEST_ON_SHOREBIRD="1.0.4+6"
+          LATEST_ON_SHOREBIRD="1.0.5+7"
           CURRENT_APP_VER=$(grep version: pubspec.yaml | sed 's/version: //' | xargs)
           echo "target=$CURRENT_APP_VER" >> $GITHUB_OUTPUT
           if [ "$CURRENT_APP_VER" == "$LATEST_ON_SHOREBIRD" ]; then
