@@ -29,31 +29,28 @@ class MessageBubble extends StatelessWidget {
     this.onRetry,
   });
 
+  // ── تنسيق الوقت من DateTime مباشرة ──
   String _fmtTime(DateTime ts) =>
       DateFormat('HH:mm').format(ts.toLocal());
 
-  // ── radius حسب الجهة والموقع في المجموعة ──
+  // ── شكل الزوايا حسب الجهة ──
   BorderRadius _radius() {
     const r  = Radius.circular(18);
     const r4 = Radius.circular(4);
-
     if (isMe) {
-      // رسائلي: الزاوية اليمين السفلى مقصوصة دايماً (كذا صفحة الويب)
       return BorderRadius.only(
         topLeft:     r,
         topRight:    r,
         bottomLeft:  r,
         bottomRight: r4,
       );
-    } else {
-      // رسائل الآخر: الزاوية اليسار السفلى مقصوصة
-      return BorderRadius.only(
-        topLeft:     r,
-        topRight:    r,
-        bottomLeft:  r4,
-        bottomRight: r,
-      );
     }
+    return BorderRadius.only(
+      topLeft:     r,
+      topRight:    r,
+      bottomLeft:  r4,
+      bottomRight: r,
+    );
   }
 
   BoxDecoration _decoration(AppColorScheme c) {
@@ -66,20 +63,19 @@ class MessageBubble extends StatelessWidget {
         ),
         borderRadius: _radius(),
       );
-    } else {
-      return BoxDecoration(
-        color:        c.bubbleOther,
-        border:       Border.all(color: c.bubbleOtherBorder),
-        borderRadius: _radius(),
-        boxShadow: [
-          BoxShadow(
-            color:      Colors.black.withOpacity(0.06),
-            blurRadius: 4,
-            offset:     const Offset(0, 2),
-          ),
-        ],
-      );
     }
+    return BoxDecoration(
+      color:        c.bubbleOther,
+      border:       Border.all(color: c.bubbleOtherBorder),
+      borderRadius: _radius(),
+      boxShadow: [
+        BoxShadow(
+          color:      Colors.black.withOpacity(0.06),
+          blurRadius: 4,
+          offset:     const Offset(0, 2),
+        ),
+      ],
+    );
   }
 
   @override
@@ -88,22 +84,22 @@ class MessageBubble extends StatelessWidget {
     final timeStr = _fmtTime(message.timestamp);
 
     return Column(
+      // ✅ الإصلاح الرئيسي: crossAxisAlignment يحدد الجهة
       crossAxisAlignment:
           isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // ✅ الإصلاح الرئيسي: Align يحدد الجهة بوضوح
+        // ✅ Align يضمن الجهة الصحيحة دايماً
         Align(
           alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
           child: Container(
             margin: EdgeInsets.only(
               top:    isFirstInGroup ? 6 : 2,
-              bottom: 0,
-              right:  isMe  ? 12 : 48,
-              left:   isMe  ? 48 : 12,
+              right:  isMe  ? 12 : 52,
+              left:   isMe  ? 52 : 12,
             ),
+            // ✅ maxWidth يمنع امتداد الفقاعة للعرض الكامل
             constraints: BoxConstraints(
-              // ✅ maxWidth يمنع امتداد الفقاعة للعرض الكامل
               maxWidth: MediaQuery.of(context).size.width * 0.72,
             ),
             child: GestureDetector(
@@ -117,15 +113,12 @@ class MessageBubble extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // نص الرسالة
+                    // ✅ بدون textDirection — التطبيق RTL من MaterialApp
                     Text(
                       message.content,
-                      textDirection: TextDirection.rtl,
                       style: AppTextStyles.bubbleText(isMe: isMe, c: c),
                     ),
                     const SizedBox(height: 4),
-
-                    // وقت + حالة
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -152,25 +145,26 @@ class MessageBubble extends StatelessWidget {
 
         // ── زر إعادة الإرسال ──
         if (hasFailed && onRetry != null)
-          Align(
-            alignment: Alignment.centerRight,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 14, top: 3),
-              child: GestureDetector(
-                onTap: onRetry,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.refresh_rounded, size: 13, color: c.red),
-                    const SizedBox(width: 3),
-                    Text(
-                      'إعادة الإرسال',
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 11, color: c.red,
-                      ),
+          Padding(
+            padding: EdgeInsets.only(
+              right: isMe ? 14 : 0,
+              left:  isMe ? 0  : 14,
+              top:   3,
+            ),
+            child: GestureDetector(
+              onTap: onRetry,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.refresh_rounded, size: 13, color: c.red),
+                  const SizedBox(width: 3),
+                  Text(
+                    'إعادة الإرسال',
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 11, color: c.red,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -222,5 +216,32 @@ class _StatusIcon extends StatelessWidget {
     }
     return const Icon(Icons.done_all_rounded,
         size: 13, color: Colors.white70);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  EXTENSION — copyWith لـ BoxDecoration
+// ═══════════════════════════════════════════════════
+extension BoxDecorationX on BoxDecoration {
+  BoxDecoration copyWith({
+    Color?                color,
+    DecorationImage?      image,
+    BoxBorder?            border,
+    BorderRadiusGeometry? borderRadius,
+    List<BoxShadow>?      boxShadow,
+    Gradient?             gradient,
+    BlendMode?            backgroundBlendMode,
+    BoxShape?             shape,
+  }) {
+    return BoxDecoration(
+      color:               color               ?? this.color,
+      image:               image               ?? this.image,
+      border:              border              ?? this.border,
+      borderRadius:        borderRadius        ?? this.borderRadius,
+      boxShadow:           boxShadow           ?? this.boxShadow,
+      gradient:            gradient            ?? this.gradient,
+      backgroundBlendMode: backgroundBlendMode ?? this.backgroundBlendMode,
+      shape:               shape               ?? this.shape,
+    );
   }
 }
