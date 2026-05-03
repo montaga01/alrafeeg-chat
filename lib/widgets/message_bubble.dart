@@ -77,12 +77,12 @@ class MessageBubble extends StatelessWidget {
       padding: EdgeInsets.only(
         top:    isFirstInGroup ? 8 : 2,
         bottom: isLastInGroup  ? 2 : 0,
-        left:   isMe  ? 60 : 14,
-        right:  isMe  ? 14 : 60,
+        right: isMe ? 14 : 60,
+        left:  isMe ? 60 : 14,
       ),
       child: Column(
-        crossAxisAlignment:
-            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+           crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+           mainAxisSize: MainAxisSize.min,
         children: [
           // ── الـ bubble نفسه ──
           GestureDetector(
