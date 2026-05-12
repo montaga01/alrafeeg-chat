@@ -124,7 +124,7 @@ class NotificationService {
   Future<void> _sendToken(String token) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final authToken = prefs.getString('auth_token'); // توكن تسجيل الدخول عندك
+      final authToken = prefs.getString('token'); // توكن تسجيل الدخول عندك
       if (authToken == null) return; // المستخدم ما سجل بعد
 
       await http.post(
@@ -163,5 +163,34 @@ class NotificationService {
   Future<void> retryRegisterToken() async {
     final token = await _fcm.getToken();
     if (token != null) await _sendToken(token);
+  }
+
+  // ── إرسال إشعار لكل التوكنات عبر الباك إند ──
+  Future<Map<String, int>> broadcastToAll({
+    required String title,
+    required String body,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final authToken = prefs.getString('auth_token');
+    if (authToken == null) throw Exception('غير مسجل الدخول');
+
+    final response = await http.post(
+      Uri.parse('${AppConstants.baseUrl}/api/broadcast-notification'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $authToken',
+      },
+      body: jsonEncode({'title': title, 'body': body}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('فشل الطلب: ${response.statusCode}');
+    }
+
+    final data = jsonDecode(response.body);
+    return {
+      'sent':   (data['sent']   as num).toInt(),
+      'failed': (data['failed'] as num).toInt(),
+    };
   }
 }

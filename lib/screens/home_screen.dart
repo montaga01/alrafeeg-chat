@@ -9,6 +9,7 @@ import '../providers/theme_provider.dart';
 import '../providers/presence_provider.dart';
 import '../services/api_service.dart';
 import '../services/websocket_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/chat_tile.dart';
 import '../widgets/avatar_widget.dart';
 import 'chat_screen.dart';
@@ -158,6 +159,105 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+
+  // ── إرسال إشعار تجريبي لكل المستخدمين ──
+  Future<void> _sendBroadcastNotification() async {
+    final c = AppColors.of(context);
+    final titleCtrl = TextEditingController(text: '🔔 الرفيق');
+    final bodyCtrl  = TextEditingController(text: 'هذا إشعار تجريبي لكل المستخدمين!');
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: c.bg2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: c.border),
+        ),
+        title: Text('📢 إرسال إشعار للكل',
+          style: GoogleFonts.ibmPlexSansArabic(fontWeight: FontWeight.bold, color: c.text)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleCtrl,
+              style: TextStyle(color: c.text),
+              decoration: InputDecoration(
+                labelText: 'العنوان', labelStyle: TextStyle(color: c.text2),
+                filled: true, fillColor: c.bg3,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: bodyCtrl,
+              style: TextStyle(color: c.text),
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'نص الإشعار', labelStyle: TextStyle(color: c.text2),
+                filled: true, fillColor: c.bg3,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('إلغاء', style: TextStyle(color: c.text2)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.send_rounded, size: 16),
+            label: const Text('إرسال'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2f81f7),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Row(children: [
+        const SizedBox(width: 18, height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+        const SizedBox(width: 12),
+        Text('جاري الإرسال...', style: GoogleFonts.ibmPlexSansArabic()),
+      ]),
+      backgroundColor: const Color(0xFF2f81f7),
+      duration: const Duration(seconds: 10),
+    ));
+
+    try {
+      final result = await NotificationService.instance.broadcastToAll(
+        title: titleCtrl.text.trim(),
+        body:  bodyCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          '✅ أُرسل لـ ${result['sent']} جهاز  |  فشل: ${result['failed']}',
+          style: GoogleFonts.ibmPlexSansArabic()),
+        backgroundColor: (result['sent'] as int) > 0
+            ? Colors.green.shade700 : Colors.red.shade700,
+        duration: const Duration(seconds: 4),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('❌ فشل الإرسال: $e', style: GoogleFonts.ibmPlexSansArabic()),
+        backgroundColor: Colors.red.shade700,
+      ));
+    }
+  }
+
   // ── تسجيل الخروج ──
   void _logout() async {
     final c = AppColors.of(context);
@@ -296,6 +396,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ),
         const SizedBox(width: 8),
+
+        // زر الإشعار التجريبي للكل
+        _iconBtn(
+          icon: Icons.campaign_rounded,
+          color: c,
+          onTap: _sendBroadcastNotification,
+          iconColor: const Color(0xFF2f81f7),
+        ),
 
         // زر البحث
         _iconBtn(
