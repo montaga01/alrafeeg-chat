@@ -124,7 +124,7 @@ class NotificationService {
   Future<void> _sendToken(String token) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final authToken = prefs.getString('token'); // توكن تسجيل الدخول عندك
+      final authToken = prefs.getString('auth_token'); // توكن تسجيل الدخول عندك
       if (authToken == null) return; // المستخدم ما سجل بعد
 
       await http.post(
