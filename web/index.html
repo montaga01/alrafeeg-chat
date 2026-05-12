@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <base href="./">
+  <base href="/">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="الرفيق - تطبيق الدردشة">
@@ -29,6 +29,12 @@
         if (loader) loader.style.display = 'none';
       }, 3000);
     });
+  </script>
+  <!-- أضف هذا قبل </body> -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('firebase-messaging-sw.js');
+    }
   </script>
 </body>
 </html>

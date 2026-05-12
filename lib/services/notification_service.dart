@@ -6,6 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants.dart';
+import 'package:flutter/foundation.dart'; // لـ kIsWeb
 
 // ─── معالج الخلفية — يجب أن يكون خارج أي class ───
 @pragma('vm:entry-point')
@@ -109,10 +110,14 @@ class NotificationService {
 
   // ─── تسجيل التوكن مع السيرفر ───
   Future<void> _registerToken() async {
-    // تحديث تلقائي لو تغير التوكن
-    _fcm.onTokenRefresh.listen(_sendToken);
+  _fcm.onTokenRefresh.listen(_sendToken);
 
-    final token = await _fcm.getToken();
+  // ✅ vapidKey للويب فقط، الأندرويد بدونها
+  final token = await _fcm.getToken(
+      vapidKey: kIsWeb 
+        ? 'BGCmBOj4n4W3yDwjmX7Kq1fxf9SjJpFj3yKrPs7ko1RlC_E1kUUbktxEEUTrv6GoAAF01h4V3fu9tqwgYPf6Z48'
+        : null,
+    );
     if (token != null) await _sendToken(token);
   }
 
@@ -153,4 +158,10 @@ class NotificationService {
   }
 
   Future<String?> getToken() => _fcm.getToken();
+
+  // أضف هذه الدالة — تُستدعى بعد تسجيل الدخول مباشرة
+  Future<void> retryRegisterToken() async {
+    final token = await _fcm.getToken();
+    if (token != null) await _sendToken(token);
+  }
 }

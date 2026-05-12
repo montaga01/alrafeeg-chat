@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../providers/theme_provider.dart';
 import 'register_screen.dart';
 import 'home_screen.dart';
+import '../services/notification_service.dart'; // ← أضف هذا
 
 class LoginScreen extends StatefulWidget {
   final ThemeProvider themeProvider;
@@ -81,6 +82,8 @@ class _LoginScreenState extends State<LoginScreen>
       );
       // حفظ الإيميل في التاريخ — نفس saveEmailHistory() من JS
       await AppStorage.saveEmailToHistory(_emailCtrl.text.trim());
+
+      await NotificationService.instance.retryRegisterToken();
 
       if (!mounted) return;
       Navigator.pushReplacement(
