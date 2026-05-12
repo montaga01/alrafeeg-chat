@@ -188,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           const SizedBox(height: 16),
           Text(
-            'الرفيق',
+            'الرفيق 1',
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 24,
               fontWeight: FontWeight.w700,
