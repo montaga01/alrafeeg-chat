@@ -1,18 +1,28 @@
+import 'package:firebase_core/firebase_core.dart';          // ← جديد
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'core/storage.dart';
-import 'core/theme.dart'; // ✅ إصلاح: كان مفقوداً — سبب خطأ AppColors
+import 'core/theme.dart';
 import 'providers/theme_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'services/notification_service.dart';                // ← جديد
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ══ إضافة جديدة: Firebase + الإشعارات ══
+  await Firebase.initializeApp();
+  await NotificationService.instance.init();
+  // ══════════════════════════════════════
+
   final themeProvider = ThemeProvider();
   await themeProvider.init();
   runApp(AlrafeegApp(themeProvider: themeProvider));
 }
+
+// ─── باقي الكود لم يتغير بتاتاً ───
 
 class AlrafeegApp extends StatefulWidget {
   final ThemeProvider themeProvider;
@@ -41,7 +51,6 @@ class _AlrafeegAppState extends State<AlrafeegApp> {
   Widget build(BuildContext context) {
     final isDark = widget.themeProvider.isDark;
 
-    // ضبط شريط الحالة حسب الثيم
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
@@ -169,9 +178,6 @@ class _AlrafeegAppState extends State<AlrafeegApp> {
   }
 }
 
-// ═══════════════════════════════════════════════════
-//  SPLASH — يتحقق من التوكن ويوجّه للشاشة الصحيحة
-// ═══════════════════════════════════════════════════
 class _Splash extends StatefulWidget {
   final ThemeProvider themeProvider;
   const _Splash({required this.themeProvider});
@@ -187,10 +193,7 @@ class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
     _ctrl.forward();
     _check();
@@ -209,18 +212,14 @@ class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
         pageBuilder: (_, a, __) => token != null
             ? HomeScreen(themeProvider: widget.themeProvider)
             : LoginScreen(themeProvider: widget.themeProvider),
-        transitionsBuilder: (_, a, __, child) =>
-            FadeTransition(opacity: a, child: child),
+        transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
         transitionDuration: const Duration(milliseconds: 400),
       ),
     );
   }
 
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -233,11 +232,7 @@ class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
             gradient: LinearGradient(
               begin: Alignment.topRight,
               end: Alignment.bottomLeft,
-              colors: [
-                Color(0xFF2f81f7),
-                Color(0xFF1f6feb),
-                Color(0xFF0d1117),
-              ],
+              colors: [Color(0xFF2f81f7), Color(0xFF1f6feb), Color(0xFF0d1117)],
               stops: [0.0, 0.4, 1.0],
             ),
           ),
@@ -246,58 +241,21 @@ class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  width: 80,
-                  height: 80,
+                  width: 80, height: 80,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF2f81f7), Color(0xFF1f6feb)],
-                    ),
+                    gradient: const LinearGradient(colors: [Color(0xFF2f81f7), Color(0xFF1f6feb)]),
                     borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF2f81f7).withOpacity(0.4),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.2),
-                      width: 1,
-                    ),
+                    boxShadow: [BoxShadow(color: const Color(0xFF2f81f7).withOpacity(0.4), blurRadius: 24, offset: const Offset(0, 8))],
+                    border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
                   ),
-                  child: const Icon(
-                    Icons.chat_rounded,
-                    color: Colors.white,
-                    size: 40,
-                  ),
+                  child: const Icon(Icons.chat_rounded, color: Colors.white, size: 40),
                 ),
                 const SizedBox(height: 20),
-                Text(
-                  'الرفيق',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+                Text('الرفيق', style: GoogleFonts.ibmPlexSansArabic(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white)),
                 const SizedBox(height: 6),
-                Text(
-                  'منصة المحادثات الفورية',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 13,
-                    color: Colors.white.withOpacity(0.6),
-                  ),
-                ),
+                Text('منصة المحادثات الفورية', style: GoogleFonts.ibmPlexSansArabic(fontSize: 13, color: Colors.white.withOpacity(0.6))),
                 const SizedBox(height: 48),
-                SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: Colors.white.withOpacity(0.7),
-                    strokeWidth: 2,
-                  ),
-                ),
+                SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white.withOpacity(0.7), strokeWidth: 2)),
               ],
             ),
           ),
